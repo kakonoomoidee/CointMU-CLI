@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { spawn } from 'child_process';
-import path from 'path';
 
 /**
  * @dev Executes an external command in a child process.

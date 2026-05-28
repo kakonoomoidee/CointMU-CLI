@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 import { Command } from 'commander';
 
@@ -18,7 +18,7 @@ const packageJson = require('../package.json');
 
 program
   .name('cmu')
-  .description(packageJson.description)
+  .description(`${packageJson.description}\nTip: Run cmu <command> -h to see detailed options for a specific command.`)
   .version(packageJson.version);
 
 
