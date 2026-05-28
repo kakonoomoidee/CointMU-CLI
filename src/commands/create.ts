@@ -86,30 +86,19 @@ export const createCommand = new Command('create')
       console.log('');
       console.log(`${green(bold('[SUCCESS]'))} CointMU project '${cyan(project)}' initialized!\n`);
 
-      const ext = language === 'typescript' ? 'ts' : 'js';
-      let mainContract = '';
-      let deployScript = '';
-
-      if (template === 'erc20') { mainContract = 'StandardERC20.sol'; deployScript = `01_standarderc20.${ext}`; }
-      else if (template === 'erc721' || template === 'nft') { mainContract = 'StandardERC721.sol'; deployScript = `01_standarderc721.${ext}`; }
-      else if (template === 'erc1155') { mainContract = 'StandardERC1155.sol'; deployScript = `01_standarderc1155.${ext}`; }
-      else if (template === 'dao') { mainContract = 'StandardDAO.sol'; deployScript = `01_standarddao.${ext}`; }
-      else if (template === 'marketplace') { mainContract = 'StandardMarketplace.sol'; deployScript = `01_standardmarketplace.${ext}`; }
-      else { mainContract = '.gitkeep'; deployScript = `01_deploy.${ext}`; }
-
-      console.log(bold('[+] Scaffolded Files:'));
-      console.log(`  - contracts/${mainContract}`);
-      console.log(`  - deploy/${deployScript}`);
-      console.log(`  - cmu.config.${ext}`);
-      console.log(`  - .env.example`);
-      console.log('');
-
       console.log(bold('[>] Next steps to start building:'));
       console.log(`  1. cd ${project}`);
-      console.log(`  2. npm install`);
-      console.log(`  3. cp .env.example .env (add your RPC and Private Key)`);
-      console.log(`  4. cmu compile`);
-      console.log(`  5. cmu deploy\n`);
+      console.log(`  2. cmu compile`);
+      console.log(`  3. cmu deploy\n`);
+
+      const quotes = [
+        '"Code is law, but you write the code." - Web3 Builder',
+        '"Trust, but verify." - Satoshi Nakamoto',
+        '"Vires in Numeris." - Bitcoin Moto',
+        '"The future is decentralized." - Anonymous'
+      ];
+      const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+      console.log(`${cyan(randomQuote)}\n`);
     } catch (error) {
       console.error('Failed to initialize project:', error);
       process.exit(1);
