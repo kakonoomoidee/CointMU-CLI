@@ -1,52 +1,54 @@
 import { Command } from 'commander';
 import fs from 'fs-extra';
 import path from 'path';
-import { erc20Template } from '../templates/erc20';
-import { erc721Template } from '../templates/erc721';
+import inquirer from 'inquirer';
+import { generateProject } from '../utils/template';
 
 export const createCommand = new Command('create')
-  .description('Scaffold standard smart contract templates');
-
-createCommand
-  .command('erc20')
-  .description('Scaffolds a standard ERC20 smart contract template in the contracts folder')
-  .action(async () => {
+  .description('Scaffolds a new CointMU project')
+  .argument('<project>', 'Name of the project directory to create')
+  .option('-t, --template <template>', 'Template to use (blank, erc20, nft)')
+  .action(async (project: string, options) => {
     try {
-      const contractsDir = path.resolve(process.cwd(), 'contracts');
-      await fs.ensureDir(contractsDir);
+      const projectPath = path.resolve(process.cwd(), project);
       
-      const targetFile = path.join(contractsDir, 'StandardERC20.sol');
-      if (fs.existsSync(targetFile)) {
-        console.error('Error: StandardERC20.sol already exists.');
+      if (fs.existsSync(projectPath)) {
+        console.error(`Error: Directory '${project}' already exists.`);
         process.exit(1);
       }
 
-      await fs.writeFile(targetFile, erc20Template, 'utf8');
-      console.log('Successfully created contracts/StandardERC20.sol');
-    } catch (error) {
-      console.error('Failed to create ERC20 template:', error);
-      process.exit(1);
-    }
-  });
+      let template = options.template;
 
-createCommand
-  .command('nft')
-  .description('Scaffolds a standard ERC721 smart contract template')
-  .action(async () => {
-    try {
-      const contractsDir = path.resolve(process.cwd(), 'contracts');
-      await fs.ensureDir(contractsDir);
-      
-      const targetFile = path.join(contractsDir, 'StandardERC721.sol');
-      if (fs.existsSync(targetFile)) {
-        console.error('Error: StandardERC721.sol already exists.');
+      if (!template) {
+        const answers = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'template',
+            message: 'Select a template:',
+            choices: [
+              { name: 'Blank (Empty project with basic structure)', value: 'blank' },
+              { name: 'ERC20 (Standard ERC20 contract and deployment script)', value: 'erc20' },
+              { name: 'NFT (Standard ERC721 contract and deployment script)', value: 'nft' }
+            ],
+          }
+        ]);
+        template = answers.template;
+      }
+
+      const validTemplates = ['blank', 'erc20', 'nft'];
+      if (!validTemplates.includes(template)) {
+        console.error(`Error: Invalid template '${template}'. Valid options are: ${validTemplates.join(', ')}`);
         process.exit(1);
       }
 
-      await fs.writeFile(targetFile, erc721Template, 'utf8');
-      console.log('Successfully created contracts/StandardERC721.sol');
+      console.log(`Initializing CointMU project in ${projectPath} using '${template}' template...`);
+
+      await generateProject(projectPath, template);
+
+      console.log('Project initialized successfully.');
+      console.log(`\nNext steps:\n  cd ${project}\n  cmu compile\n`);
     } catch (error) {
-      console.error('Failed to create NFT template:', error);
+      console.error('Failed to initialize project:', error);
       process.exit(1);
     }
   });

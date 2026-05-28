@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import { exec } from 'child_process';
-import fs from 'fs-extra';
-import path from 'path';
+import { loadConfig } from '../utils/config';
 
 export const explorerCommand = new Command('explorer')
   .description('Explorer commands');
@@ -13,12 +12,13 @@ explorerCommand
     try {
       let explorerUrl = 'http://localhost:3000'; // Default placeholder
 
-      const configPath = path.resolve(process.cwd(), 'cmu.config.json');
-      if (fs.existsSync(configPath)) {
-        const config = await fs.readJson(configPath);
-        if (config.network?.explorerUrl) {
+      try {
+        const config = await loadConfig();
+        if (config?.network?.explorerUrl) {
           explorerUrl = config.network.explorerUrl;
         }
+      } catch (e) {
+        // Fallback to default if config not found
       }
 
       console.log(`Opening CointMU explorer at ${explorerUrl}...`);

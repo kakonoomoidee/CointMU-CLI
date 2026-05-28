@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
+require('dotenv').config();
+
 import { Command } from 'commander';
-import { initCommand } from './commands/init';
+
 import { compileCommand } from './commands/compile';
 import { deployCommand } from './commands/deploy';
 import { walletCommand } from './commands/wallet';
@@ -18,7 +20,7 @@ program
   .description(packageJson.description)
   .version(packageJson.version);
 
-program.addCommand(initCommand);
+
 program.addCommand(compileCommand);
 program.addCommand(deployCommand);
 program.addCommand(walletCommand);

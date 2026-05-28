@@ -1,6 +1,6 @@
 {
   "name": "cmu-cli",
-  "version": "1.0.0",
+  "version": "1.0.0-beta",
   "description": "Primary development toolkit for the CointMU blockchain",
   "main": "dist/index.js",
   "bin": {
@@ -12,12 +12,16 @@
   },
   "dependencies": {
     "commander": "^11.0.0",
+    "dotenv": "^17.4.2",
     "ethers": "^6.8.0",
     "fs-extra": "^11.1.1",
-    "solc": "^0.8.21"
+    "inquirer": "^8.0.0",
+    "solc": "^0.8.21",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.1",
+    "@types/inquirer": "^9.0.9",
     "@types/node": "^20.5.0",
     "typescript": "^5.1.6"
   }

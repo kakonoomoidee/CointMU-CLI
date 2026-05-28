@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import { ethers } from 'ethers';
-import fs from 'fs-extra';
-import path from 'path';
+import { loadConfig } from '../utils/config';
 
 export const nodeCommand = new Command('node')
   .description('Node management commands');
@@ -13,12 +12,13 @@ nodeCommand
     try {
       let rpcUrl = 'http://localhost:8545'; // Default
 
-      const configPath = path.resolve(process.cwd(), 'cmu.config.json');
-      if (fs.existsSync(configPath)) {
-        const config = await fs.readJson(configPath);
-        if (config.network?.rpcUrl) {
+      try {
+        const config = await loadConfig();
+        if (config?.network?.rpcUrl) {
           rpcUrl = config.network.rpcUrl;
         }
+      } catch (e) {
+        // Fallback to default if config not found
       }
 
       console.log(`Pinging CointMU node at ${rpcUrl}...`);
