@@ -19,7 +19,7 @@ const packageJson = require('../package.json');
 program
   .name('cmu')
   .description(`${packageJson.description}\nTip: Run cmu <command> -h to see detailed options for a specific command.`)
-  .version(packageJson.version);
+  .version(`CointMU v${packageJson.version}\nSolidity v${require('solc').version()}\nNode ${process.version}\nEthers v${require('ethers').version}`, '-V, --version');
 
 
 program.addCommand(compileCommand);
