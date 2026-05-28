@@ -10,6 +10,7 @@ import { walletCommand } from './commands/wallet';
 import { createCommand } from './commands/create';
 import { explorerCommand } from './commands/explorer';
 import { nodeCommand } from './commands/node';
+import { auditCommand } from './commands/audit';
 
 const program = new Command();
 
@@ -27,5 +28,6 @@ program.addCommand(walletCommand);
 program.addCommand(createCommand);
 program.addCommand(explorerCommand);
 program.addCommand(nodeCommand);
+program.addCommand(auditCommand);
 
 program.parse(process.argv);
