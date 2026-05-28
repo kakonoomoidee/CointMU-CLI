@@ -12,9 +12,10 @@ function runCommand(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log(`\x1b[36m> Executing: ${command} ${args.join(' ')}\x1b[0m`);
     
-    const child = spawn(command, args, {
+    const executable = process.platform === 'win32' ? `${command}.cmd` : command;
+    const child = spawn(executable, args, {
       stdio: 'inherit',
-      shell: process.platform === 'win32'
+      shell: false
     });
 
     child.on('error', (error) => {
@@ -61,7 +62,7 @@ export const auditCommand = new Command('audit')
       console.log('\n\x1b[1m\x1b[32m[+] Audit process completed.\x1b[0m\n');
     } catch (error) {
       console.error('\n\x1b[31m[!] Audit failed to execute completely.\x1b[0m');
-      console.error(error);
+      console.error(error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   });

@@ -68,7 +68,7 @@ export const compileCommand = new Command('compile')
         }
       }
     } catch (error) {
-      console.error('Failed to compile contracts:', error);
+      console.error('Failed to compile contracts:', error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   });

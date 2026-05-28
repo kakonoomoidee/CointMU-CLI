@@ -17,7 +17,7 @@ walletCommand
       console.log('---------------------------');
       console.log('Warning: Keep your private key safe and never share it!');
     } catch (error) {
-      console.error('Failed to create wallet:', error);
+      console.error('Failed to create wallet:', error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   });

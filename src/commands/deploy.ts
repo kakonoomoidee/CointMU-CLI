@@ -15,8 +15,10 @@ function runDeployScript(scriptPath: string): Promise<void> {
     let args = [scriptPath];
 
     if (ext === '.ts') {
-      runner = 'npx';
+      runner = process.platform === 'win32' ? 'npx.cmd' : 'npx';
       args = ['ts-node', scriptPath];
+    } else {
+      runner = process.platform === 'win32' ? 'node.exe' : 'node';
     }
 
     console.log(`\n========================================`);
@@ -25,7 +27,7 @@ function runDeployScript(scriptPath: string): Promise<void> {
 
     const child = spawn(runner, args, {
       stdio: 'inherit',
-      shell: process.platform === 'win32',
+      shell: false,
       env: {
         ...process.env,
       }
@@ -76,8 +78,8 @@ export const deployCommand = new Command('deploy')
 
       console.log('\n✅ All deployment scripts executed successfully.');
     } catch (error) {
-      console.error('\n❌ Deployment failed:');
-      console.error(error);
+      console.error('\n[!] Deployment failed:');
+      console.error(error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   });

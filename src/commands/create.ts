@@ -17,6 +17,11 @@ export const createCommand = new Command("create")
   )
   .action(async (project: string, options) => {
     try {
+      if (project !== path.basename(project)) {
+        console.error("Error: Project name cannot contain path separators.");
+        process.exit(1);
+      }
+      
       const projectPath = path.resolve(process.cwd(), project);
 
       if (fs.existsSync(projectPath)) {
@@ -162,7 +167,7 @@ export const createCommand = new Command("create")
       const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
       console.log(`${cyan(randomQuote)}\n`);
     } catch (error) {
-      console.error("Failed to initialize project:", error);
+      console.error("Failed to initialize project:", error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   });
