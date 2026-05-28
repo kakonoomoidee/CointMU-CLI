@@ -1,0 +1,10 @@
+# Global default owner
+* @kakonoomoidee
+
+# Core contracts and security critical paths
+/contracts/ @kakonoomoidee
+/src/templates/ @kakonoomoidee
+
+# Configuration and workflows
+/.github/ @kakonoomoidee
+/package.json @kakonoomoidee
