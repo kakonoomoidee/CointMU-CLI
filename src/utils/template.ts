@@ -34,7 +34,7 @@ function getConfigTemplate(language: string): string {
     chainId: 1337
   },
   compiler: {
-    version: "0.8.21"
+    version: "0.8.20"
   }
 };
 `;
@@ -45,7 +45,7 @@ function getConfigTemplate(language: string): string {
     chainId: 1337
   },
   compiler: {
-    version: "0.8.21"
+    version: "0.8.20"
   }
 };
 `;
