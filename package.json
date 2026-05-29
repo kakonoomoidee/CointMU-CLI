@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "prepare": "husky"
   },
   "dependencies": {
     "commander": "^14.0.3",
@@ -22,7 +23,20 @@
   "devDependencies": {
     "@types/fs-extra": "^11.0.1",
     "@types/inquirer": "^9.0.9",
-    "@types/node": "^25.9.1",
+    "@types/node": "^20.5.0",
+    "eslint": "^10.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.5",
+    "prettier": "^3.8.3",
     "typescript": "^5.1.6"
+  },
+  "lint-staged": {
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write",
+      "sh -c \"tsc --noEmit\""
+    ]
+  }
   }
 }
