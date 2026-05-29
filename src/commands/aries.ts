@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { getRandomSadQuote } from "../utils/quotes";
 
 /**
  * Executes the hidden easter egg sequence.
@@ -18,7 +19,7 @@ function runAries(): void {
     `${cyan} > HW! aries instance awakened at Universitas Muhammadiyah Yogyakarta.${reset}`,
   );
   console.log(`${cyan} > The architect behind the scenes is watching.${reset}`);
-  console.log(`${green} > Code is law, but the dev rules the chain.${reset}`);
+  console.log(`${green} > ${getRandomSadQuote()}${reset}`);
 }
 
 export const ariesCommand = new Command("aries")

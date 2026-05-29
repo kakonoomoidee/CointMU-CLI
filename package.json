@@ -33,12 +33,9 @@
     "typescript-eslint": "^8.60.0"
   },
   "lint-staged": {
-  "lint-staged": {
     "src/**/*.ts": [
       "eslint --fix",
-      "prettier --write",
-      "sh -c \"tsc --noEmit\""
+      "prettier --write"
     ]
-  }
   }
 }

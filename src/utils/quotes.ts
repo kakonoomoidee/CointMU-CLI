@@ -47,3 +47,18 @@ export function getRandomQuote(): string {
   ];
   return quotes[Math.floor(Math.random() * quotes.length)];
 }
+
+/**
+ * Retrieves a random sad developer quote for the aries easter egg.
+ * @returns {string} The randomly selected quote.
+ */
+export function getRandomSadQuote(): string {
+  const sadQuotes = [
+    "Her heart was immutable, but my feelings got rekt in the mempool.",
+    "I tried to deploy our future on mainnet, but she rolled back to her ex.",
+    "Git commit -m 'trying to fix us', but the merge conflict was unresolvable.",
+    "Connection closed by peer. I was the only one sending keep-alive packets.",
+    "Error 404: Mutual feelings not found.",
+  ];
+  return sadQuotes[Math.floor(Math.random() * sadQuotes.length)];
+}
