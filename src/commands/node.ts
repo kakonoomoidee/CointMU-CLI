@@ -19,7 +19,7 @@ nodeCommand
         if (config?.network?.rpcUrl) {
           rpcUrl = config.network.rpcUrl;
         }
-      } catch (e) {
+      } catch {
         // Fallback to default if config not found
       }
 
