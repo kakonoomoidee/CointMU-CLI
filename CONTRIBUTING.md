@@ -8,7 +8,7 @@ First off, thank you for considering contributing to cmu-cli! It's people like y
 Fork this repository to your own GitHub account and then clone it to your local device.
 
 ### 2. Install Dependencies
-Ensure you have Node.js (v18 or v20) installed.
+Ensure you have Node.js (>=22.22.1) installed.
 ```bash
 npm install
 ```
