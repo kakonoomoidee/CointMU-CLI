@@ -36,7 +36,7 @@ program
       })
         .toString()
         .trim();
-    } catch (e) {
+    } catch {
       // Ignore if not in a git repository
     }
 
