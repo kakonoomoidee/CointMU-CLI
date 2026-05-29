@@ -1,8 +1,5 @@
 import { Command } from "commander";
-import fs from "fs-extra";
-import path from "path";
-import inquirer from "inquirer";
-import { generateProject } from "../utils/template";
+import * as path from "path";
 import { getRandomQuote } from "../utils/quotes";
 
 export const createCommand = new Command("create")
@@ -18,6 +15,10 @@ export const createCommand = new Command("create")
   )
   .action(async (project: string, options) => {
     try {
+      const fs = require("fs-extra");
+      const inquirer = require("inquirer");
+      const { generateProject } = require("../utils/template");
+
       if (project !== path.basename(project)) {
         console.error("Error: Project name cannot contain path separators.");
         process.exit(1);

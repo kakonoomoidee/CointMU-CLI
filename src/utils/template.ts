@@ -1,10 +1,9 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { erc20Template } from '../templates/erc20';
-import { erc721Template } from '../templates/erc721';
-import { erc1155Template } from '../templates/erc1155';
-import { daoTemplate } from '../templates/dao';
-import { marketplaceTemplate } from '../templates/marketplace';
+import * as path from "path";
+import { erc20Template } from "../templates/erc20";
+import { erc721Template } from "../templates/erc721";
+import { erc1155Template } from "../templates/erc1155";
+import { daoTemplate } from "../templates/dao";
+import { marketplaceTemplate } from "../templates/marketplace";
 
 const gitignoreTemplate = `# Logs
 logs
@@ -27,7 +26,7 @@ dist/
 `;
 
 function getConfigTemplate(language: string): string {
-  if (language === 'typescript') {
+  if (language === "typescript") {
     return `export default {
   network: {
     rpcUrl: "http://localhost:8545",
@@ -51,7 +50,11 @@ function getConfigTemplate(language: string): string {
 `;
 }
 
-function getDeployScript(contractName: string, contractArgs: string, language: string): string {
+function getDeployScript(
+  contractName: string,
+  contractArgs: string,
+  language: string,
+): string {
   const tsImports = `import { ethers } from 'ethers';
 import fs from 'fs-extra';
 import path from 'path';`;
@@ -60,7 +63,7 @@ import path from 'path';`;
 const fs = require('fs-extra');
 const path = require('path');`;
 
-  return `${language === 'typescript' ? tsImports : jsImports}
+  return `${language === "typescript" ? tsImports : jsImports}
 
 async function main() {
   console.log('Deploying ${contractName}...');
@@ -104,7 +107,8 @@ main().catch(console.error);
 `;
 }
 
-const blankDeployTemplate = (language: string) => `import { ethers } from 'ethers';
+const blankDeployTemplate = (language: string) =>
+  `import { ethers } from 'ethers';
 
 async function main() {
   console.log('Deploy script executed!');
@@ -112,7 +116,12 @@ async function main() {
 }
 
 main().catch(console.error);
-`.replace("import { ethers } from 'ethers';", language === 'typescript' ? "import { ethers } from 'ethers';" : "const { ethers } = require('ethers');");
+`.replace(
+    "import { ethers } from 'ethers';",
+    language === "typescript"
+      ? "import { ethers } from 'ethers';"
+      : "const { ethers } = require('ethers');",
+  );
 
 /**
  * @dev Scaffolds a new CointMU project based on the selected template and language.
@@ -121,22 +130,50 @@ main().catch(console.error);
  * @param language string The language to use ('typescript' or 'javascript').
  * @returns {Promise<void>} Resolves when scaffolding is complete.
  */
-export async function generateProject(projectPath: string, template: string, language: string): Promise<void> {
-  const dirs = ['contracts', 'scripts', 'artifacts', 'deployments', 'deploy'];
+export async function generateProject(
+  projectPath: string,
+  template: string,
+  language: string,
+): Promise<void> {
+  const fs = require("fs-extra");
+  const dirs = ["contracts", "scripts", "artifacts", "deployments", "deploy"];
   for (const dir of dirs) {
     await fs.ensureDir(path.join(projectPath, dir));
   }
 
-  await fs.writeFile(path.join(projectPath, '.gitignore'), gitignoreTemplate, 'utf8');
-  await fs.writeFile(path.join(projectPath, '.env.example'), 'PRIVATE_KEY=your_private_key_here\n', 'utf8');
-  await fs.writeFile(path.join(projectPath, `cmu.config.${language === 'typescript' ? 'ts' : 'js'}`), getConfigTemplate(language), 'utf8');
-  await fs.writeFile(path.join(projectPath, 'artifacts', '.gitkeep'), '', 'utf8');
-  await fs.writeFile(path.join(projectPath, 'deployments', '.gitkeep'), '', 'utf8');
-  await fs.writeFile(path.join(projectPath, 'scripts', '.gitkeep'), '', 'utf8');
+  await fs.writeFile(
+    path.join(projectPath, ".gitignore"),
+    gitignoreTemplate,
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(projectPath, ".env.example"),
+    "PRIVATE_KEY=your_private_key_here\n",
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(
+      projectPath,
+      `cmu.config.${language === "typescript" ? "ts" : "js"}`,
+    ),
+    getConfigTemplate(language),
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(projectPath, "artifacts", ".gitkeep"),
+    "",
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(projectPath, "deployments", ".gitkeep"),
+    "",
+    "utf8",
+  );
+  await fs.writeFile(path.join(projectPath, "scripts", ".gitkeep"), "", "utf8");
 
-  const ext = language === 'typescript' ? 'ts' : 'js';
+  const ext = language === "typescript" ? "ts" : "js";
 
-  if (language === 'typescript') {
+  if (language === "typescript") {
     const tsconfig = {
       compilerOptions: {
         target: "ES2022",
@@ -145,44 +182,66 @@ export async function generateProject(projectPath: string, template: string, lan
         strict: true,
         esModuleInterop: true,
         skipLibCheck: true,
-        forceConsistentCasingInFileNames: true
+        forceConsistentCasingInFileNames: true,
       },
-      include: ["scripts/**/*", "deploy/**/*"]
+      include: ["scripts/**/*", "deploy/**/*"],
     };
-    await fs.writeJson(path.join(projectPath, 'tsconfig.json'), tsconfig, { spaces: 2 });
+    await fs.writeJson(path.join(projectPath, "tsconfig.json"), tsconfig, {
+      spaces: 2,
+    });
   }
 
-  let contractSrc = '';
-  let contractName = '';
-  let deployArgs = '';
+  let contractSrc = "";
+  let contractName = "";
+  let deployArgs = "";
 
-  if (template === 'erc20') {
+  if (template === "erc20") {
     contractSrc = erc20Template;
-    contractName = 'StandardERC20';
+    contractName = "StandardERC20";
     deployArgs = "'MyToken', 'MTK', 1000000";
-  } else if (template === 'erc721' || template === 'nft') {
+  } else if (template === "erc721" || template === "nft") {
     contractSrc = erc721Template;
-    contractName = 'StandardERC721';
+    contractName = "StandardERC721";
     deployArgs = "'MyNFT', 'MNFT'";
-  } else if (template === 'erc1155') {
+  } else if (template === "erc1155") {
     contractSrc = erc1155Template;
-    contractName = 'StandardERC1155';
+    contractName = "StandardERC1155";
     deployArgs = "'MyTokens', 'MTKS'";
-  } else if (template === 'dao') {
+  } else if (template === "dao") {
     contractSrc = daoTemplate;
-    contractName = 'StandardDAO';
+    contractName = "StandardDAO";
     deployArgs = "'MyDAO'";
-  } else if (template === 'marketplace') {
+  } else if (template === "marketplace") {
     contractSrc = marketplaceTemplate;
-    contractName = 'StandardMarketplace';
+    contractName = "StandardMarketplace";
     deployArgs = "";
   }
 
-  if (template === 'blank') {
-    await fs.writeFile(path.join(projectPath, 'contracts', '.gitkeep'), '', 'utf8');
-    await fs.writeFile(path.join(projectPath, 'deploy', `01_deploy.${ext}`), blankDeployTemplate(language), 'utf8');
+  if (template === "blank") {
+    await fs.writeFile(
+      path.join(projectPath, "contracts", ".gitkeep"),
+      "",
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(projectPath, "deploy", `01_deploy.${ext}`),
+      blankDeployTemplate(language),
+      "utf8",
+    );
   } else {
-    await fs.writeFile(path.join(projectPath, 'contracts', `${contractName}.sol`), contractSrc, 'utf8');
-    await fs.writeFile(path.join(projectPath, 'deploy', `01_${contractName.toLowerCase()}.${ext}`), getDeployScript(contractName, deployArgs, language), 'utf8');
+    await fs.writeFile(
+      path.join(projectPath, "contracts", `${contractName}.sol`),
+      contractSrc,
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(
+        projectPath,
+        "deploy",
+        `01_${contractName.toLowerCase()}.${ext}`,
+      ),
+      getDeployScript(contractName, deployArgs, language),
+      "utf8",
+    );
   }
 }
