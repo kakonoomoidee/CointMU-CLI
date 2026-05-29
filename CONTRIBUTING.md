@@ -26,7 +26,7 @@ Write your code and ensure it follows the project's coding standards.
 Before committing, make sure everything passes.
 ```bash
 npm run build
-npm test
+npm test --if-present
 ```
 
 ### 6. Commit Your Changes
