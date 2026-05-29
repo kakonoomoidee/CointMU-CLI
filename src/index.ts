@@ -11,6 +11,7 @@ import { createCommand } from "./commands/create";
 import { explorerCommand } from "./commands/explorer";
 import { nodeCommand } from "./commands/node";
 import { auditCommand } from "./commands/audit";
+import { ariesCommand } from "./commands/aries";
 
 const program = new Command();
 
@@ -35,7 +36,7 @@ program
       })
         .toString()
         .trim();
-    } catch (e) {
+    } catch {
       // Ignore if not in a git repository
     }
 
@@ -56,5 +57,6 @@ program.addCommand(createCommand);
 program.addCommand(explorerCommand);
 program.addCommand(nodeCommand);
 program.addCommand(auditCommand);
+program.addCommand(ariesCommand, { hidden: true });
 
 program.parse(process.argv);
