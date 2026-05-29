@@ -2,11 +2,9 @@ import { Command } from "commander";
 
 /**
  * Executes the hidden easter egg sequence.
- * @param {any} _options The command options.
- * @param {Command} _command The command instance.
  * @returns {void}
  */
-function runAries(_options: any, _command: Command): void {
+function runAries(): void {
   const dim = "\x1b[2m";
   const cyan = "\x1b[36m";
   const green = "\x1b[32m";
