@@ -25,9 +25,27 @@ program
   .on("option:version", () => {
     const solc = require("solc");
     const ethers = require("ethers");
-    console.log(
-      `CointMU v${packageJson.version}\nSolidity v${solc.version()}\nNode ${process.version}\nEthers v${ethers.version}`,
-    );
+    const { execSync } = require("child_process");
+
+    let gitCommit = "unknown";
+    try {
+      gitCommit = execSync("git rev-parse --short HEAD", {
+        stdio: "pipe",
+        cwd: __dirname,
+      })
+        .toString()
+        .trim();
+    } catch (e) {
+      // Ignore if not in a git repository
+    }
+
+    console.log("cmu");
+    console.log(`version : ${packageJson.version}`);
+    console.log(`git commit : ${gitCommit}`);
+    console.log(`architecture : ${process.arch}`);
+    console.log(`node : ${process.version}`);
+    console.log(`solidity : ${solc.version()}`);
+    console.log(`ethers : ${ethers.version}`);
     process.exit(0);
   });
 
