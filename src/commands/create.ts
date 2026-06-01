@@ -2,6 +2,11 @@ import { Command } from "commander";
 import * as path from "path";
 import { getRandomQuote } from "../utils/quotes";
 
+interface CreateOptions {
+  template?: string;
+  language?: string;
+}
+
 export const createCommand = new Command("create")
   .description("Scaffolds a new CointMU project")
   .argument("<project>", "Name of the project directory to create")
@@ -13,7 +18,7 @@ export const createCommand = new Command("create")
     "-l, --language <language>",
     "Language to use (typescript, javascript)",
   )
-  .action(async (project: string, options) => {
+  .action(async (project: string, options: CreateOptions) => {
     try {
       const fs = require("fs-extra");
       const inquirer = require("inquirer");
@@ -26,13 +31,13 @@ export const createCommand = new Command("create")
 
       const projectPath = path.resolve(process.cwd(), project);
 
-      if (fs.existsSync(projectPath)) {
+      if (await fs.pathExists(projectPath)) {
         console.error(`Error: Directory '${project}' already exists.`);
         process.exit(1);
       }
 
-      let template = options.template;
-      let language = options.language;
+      let template: string = options.template ?? "";
+      let language: string = options.language ?? "";
 
       const questions = [];
 

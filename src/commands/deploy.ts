@@ -3,8 +3,8 @@ import { spawn } from "child_process";
 import * as path from "path";
 
 /**
- * @dev Executes a deployment script in a child process.
- * @param scriptPath string The absolute path to the script to execute.
+ * Executes a deployment script in a child process.
+ * @param scriptPath {string} The absolute path to the script to execute.
  * @returns {Promise<void>} Resolves when the script successfully completes.
  */
 function runDeployScript(scriptPath: string): Promise<void> {
@@ -58,7 +58,7 @@ export const deployCommand = new Command("deploy")
     const fs = require("fs-extra");
     const deployDir = path.resolve(process.cwd(), "deploy");
 
-    if (!fs.existsSync(deployDir)) {
+    if (!(await fs.pathExists(deployDir))) {
       console.error(`Error: 'deploy' directory not found at ${deployDir}.`);
       console.error(
         `Please run this command from the root of your CointMU project.`,

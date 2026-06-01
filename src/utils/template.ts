@@ -25,6 +25,11 @@ dist/
 .env.local
 `;
 
+/**
+ * Builds the cmu.config file contents for the selected language.
+ * @param language {string} The language to use ('typescript' or 'javascript').
+ * @returns {string} The configuration file source code.
+ */
 function getConfigTemplate(language: string): string {
   if (language === "typescript") {
     return `export default {
@@ -50,6 +55,13 @@ function getConfigTemplate(language: string): string {
 `;
 }
 
+/**
+ * Builds the deployment script source for a given contract.
+ * @param contractName {string} The name of the contract to deploy.
+ * @param contractArgs {string} The constructor arguments rendered as source.
+ * @param language {string} The language to use ('typescript' or 'javascript').
+ * @returns {string} The deployment script source code.
+ */
 function getDeployScript(
   contractName: string,
   contractArgs: string,
@@ -107,7 +119,12 @@ main().catch(console.error);
 `;
 }
 
-const blankDeployTemplate = (language: string) =>
+/**
+ * Builds the deployment script source for a blank project.
+ * @param language {string} The language to use ('typescript' or 'javascript').
+ * @returns {string} The deployment script source code.
+ */
+const blankDeployTemplate = (language: string): string =>
   `import { ethers } from 'ethers';
 
 async function main() {
@@ -124,10 +141,10 @@ main().catch(console.error);
   );
 
 /**
- * @dev Scaffolds a new CointMU project based on the selected template and language.
- * @param projectPath string The absolute path to the project directory.
- * @param template string The template to use ('blank', 'erc20', 'erc721', 'erc1155', 'dao', 'marketplace').
- * @param language string The language to use ('typescript' or 'javascript').
+ * Scaffolds a new CointMU project based on the selected template and language.
+ * @param projectPath {string} The absolute path to the project directory.
+ * @param template {string} The template to use ('blank', 'erc20', 'erc721', 'erc1155', 'dao', 'marketplace').
+ * @param language {string} The language to use ('typescript' or 'javascript').
  * @returns {Promise<void>} Resolves when scaffolding is complete.
  */
 export async function generateProject(
