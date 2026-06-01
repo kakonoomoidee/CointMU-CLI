@@ -12,7 +12,7 @@ export const compileCommand = new Command("compile")
       const contractsDir = path.resolve(process.cwd(), "contracts");
       const artifactsDir = path.resolve(process.cwd(), "artifacts");
 
-      if (!fs.existsSync(contractsDir)) {
+      if (!(await fs.pathExists(contractsDir))) {
         console.error(
           "Error: contracts directory not found. Are you in a CointMU project?",
         );

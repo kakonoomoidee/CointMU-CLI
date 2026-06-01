@@ -2,9 +2,9 @@ import { Command } from "commander";
 import { spawn } from "child_process";
 
 /**
- * @dev Executes an external command in a child process.
- * @param command string The command to execute (e.g. 'npm', 'npx').
- * @param args string[] The arguments to pass to the command.
+ * Executes an external command in a child process.
+ * @param command {string} The command to execute (e.g. 'npm', 'npx').
+ * @param args {string[]} The arguments to pass to the command.
  * @returns {Promise<void>} Resolves when the command successfully completes.
  */
 function runCommand(command: string, args: string[]): Promise<void> {
