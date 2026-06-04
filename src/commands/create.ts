@@ -22,16 +22,21 @@ export const createCommand = new Command("create")
     try {
       const fs = require("fs-extra");
       const inquirer = require("inquirer");
+      const prompt = inquirer.prompt ?? inquirer.default?.prompt;
       const { generateProject } = require("../utils/template");
 
-      if (project !== path.basename(project)) {
+      const isCurrentDir = project === ".";
+
+      if (!isCurrentDir && project !== path.basename(project)) {
         console.error("Error: Project name cannot contain path separators.");
         process.exit(1);
       }
 
-      const projectPath = path.resolve(process.cwd(), project);
+      const projectPath = isCurrentDir
+        ? process.cwd()
+        : path.resolve(process.cwd(), project);
 
-      if (await fs.pathExists(projectPath)) {
+      if (!isCurrentDir && (await fs.pathExists(projectPath))) {
         console.error(`Error: Directory '${project}' already exists.`);
         process.exit(1);
       }
@@ -76,7 +81,7 @@ export const createCommand = new Command("create")
       }
 
       if (questions.length > 0) {
-        const answers = await inquirer.prompt(questions);
+        const answers = await prompt(questions);
         if (!language) language = answers.language;
         if (!template) template = answers.template;
       }
@@ -120,16 +125,21 @@ export const createCommand = new Command("create")
       const cyan = (text: string) => `\x1b[36m${text}\x1b[0m`;
       const bold = (text: string) => `\x1b[1m${text}\x1b[0m`;
 
+      const displayName = isCurrentDir ? path.basename(process.cwd()) : project;
+
       console.log(cyan(bold(asciiArt)));
       console.log("");
       console.log(
-        `${green(bold("[SUCCESS]"))} CointMU project '${cyan(project)}' initialized!\n`,
+        `${green(bold("[SUCCESS]"))} CointMU project '${cyan(displayName)}' initialized!\n`,
       );
 
       console.log(bold("[>] Next steps to start building:"));
-      console.log(`  1. cd ${project}`);
-      console.log(`  2. cmu compile`);
-      console.log(`  3. cmu deploy\n`);
+      let step = 1;
+      if (!isCurrentDir) {
+        console.log(`  ${step++}. cd ${project}`);
+      }
+      console.log(`  ${step++}. cmu compile`);
+      console.log(`  ${step++}. cmu deploy\n`);
 
       const randomQuote = getRandomQuote();
       console.log(`${cyan(randomQuote)}\n`);
