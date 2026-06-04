@@ -38,9 +38,10 @@ export const compileCommand = new Command("compile")
         language: "Solidity",
         sources,
         settings: {
+          evmVersion: "paris",
           outputSelection: {
             "*": {
-              "*": ["abi", "evm.bytecode"],
+              "*": ["abi", "evm.bytecode.object"],
             },
           },
         },
