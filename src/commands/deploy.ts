@@ -10,23 +10,16 @@ import * as path from "path";
 function runDeployScript(scriptPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const ext = path.extname(scriptPath);
-    let runner = "node";
-    let args = [scriptPath];
-
-    if (ext === ".ts") {
-      runner = process.platform === "win32" ? "npx.cmd" : "npx";
-      args = ["ts-node", scriptPath];
-    } else {
-      runner = process.platform === "win32" ? "node.exe" : "node";
-    }
+    const runner = ext === ".ts" ? "npx" : "node";
+    const args = ext === ".ts" ? ["ts-node", scriptPath] : [scriptPath];
 
     console.log(`\n========================================`);
     console.log(`🚀 Executing: ${path.basename(scriptPath)}`);
     console.log(`========================================\n`);
 
     const child = spawn(runner, args, {
+      shell: true,
       stdio: "inherit",
-      shell: false,
       env: {
         ...process.env,
       },
