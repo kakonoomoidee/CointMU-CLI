@@ -48,7 +48,7 @@ export const createCommand = new Command("create")
 
       if (!language) {
         questions.push({
-          type: "list",
+          type: "select",
           name: "language",
           message: "Select your preferred language:",
           choices: [
@@ -60,7 +60,7 @@ export const createCommand = new Command("create")
 
       if (!template) {
         questions.push({
-          type: "list",
+          type: "select",
           name: "template",
           message: "Select a template:",
           choices: [
