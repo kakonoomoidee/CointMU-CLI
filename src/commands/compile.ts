@@ -11,6 +11,31 @@ export const compileCommand = new Command("compile")
       const solc = require("solc");
       const contractsDir = path.resolve(process.cwd(), "contracts");
       const artifactsDir = path.resolve(process.cwd(), "artifacts");
+      const configPathTs = path.resolve(process.cwd(), "cmu.config.ts");
+      const configPathJs = path.resolve(process.cwd(), "cmu.config.js");
+
+      let compilerSettings: Record<string, unknown> = {};
+      let configPath: string | null = null;
+      if (await fs.pathExists(configPathTs)) {
+        configPath = configPathTs;
+      } else if (await fs.pathExists(configPathJs)) {
+        configPath = configPathJs;
+      }
+
+      if (configPath) {
+        try {
+          if (configPath.endsWith(".ts")) {
+            require("ts-node/register/transpile-only");
+          }
+          const loadedConfig = require(configPath);
+          const cmuConfig = loadedConfig?.default ?? loadedConfig;
+          compilerSettings = cmuConfig?.compiler?.settings ?? {};
+        } catch (error) {
+          console.warn(
+            `Warning: failed to load ${path.basename(configPath)}. Using defaults.`,
+          );
+        }
+      }
 
       if (!(await fs.pathExists(contractsDir))) {
         console.error(
@@ -34,16 +59,23 @@ export const compileCommand = new Command("compile")
         sources[file] = { content };
       }
 
+      const settings: Record<string, unknown> = {
+        ...compilerSettings,
+        outputSelection: {
+          "*": {
+            "*": ["abi", "evm.bytecode"],
+          },
+        },
+      };
+
+      if (!("evmVersion" in settings)) {
+        settings.evmVersion = "paris";
+      }
+
       const input = {
         language: "Solidity",
         sources,
-        settings: {
-          outputSelection: {
-            "*": {
-              "*": ["abi", "evm.bytecode"],
-            },
-          },
-        },
+        settings,
       };
 
       console.log("Compiling contracts...");
