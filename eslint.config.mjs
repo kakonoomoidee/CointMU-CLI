@@ -8,6 +8,17 @@ export default tseslint.config(
     ignores: ['dist/', 'node_modules/', 'coverage/']
   },
   {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        __dirname: 'readonly',
+        process: 'readonly',
+        require: 'readonly'
+      }
+    }
+  },
+  {
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-var-requires': 'off',
