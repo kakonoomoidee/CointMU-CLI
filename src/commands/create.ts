@@ -1,6 +1,8 @@
 import { Command } from "commander";
 import * as path from "path";
 import { getRandomQuote } from "../utils/quotes";
+import inquirer from "inquirer";
+import { templateChoices, validTemplates } from "../utils/template";
 
 interface CreateOptions {
   template?: string;
@@ -9,30 +11,45 @@ interface CreateOptions {
 
 export const createCommand = new Command("create")
   .description("Scaffolds a new CointMU project")
-  .argument("<project>", "Name of the project directory to create")
+  .argument("[project]", "Name of the project directory to create")
   .option(
     "-t, --template <template>",
-    "Template to use (blank, erc20, erc721, erc1155, dao, marketplace)",
+    "Template to use (blank, erc20, erc721, erc1155, dao, marketplace, staking, airdrop, vault, kyberion)",
   )
   .option(
     "-l, --language <language>",
     "Language to use (typescript, javascript)",
   )
-  .action(async (project: string, options: CreateOptions) => {
+  .action(async (project: string | undefined, options: CreateOptions) => {
     try {
       const fs = require("fs-extra");
-      const inquirer = require("inquirer");
       const { generateProject } = require("../utils/template");
 
-      if (project !== path.basename(project)) {
+      let projectName = project?.trim() ?? "";
+
+      if (!projectName) {
+        const projectAnswer = await inquirer.prompt([
+          {
+            type: "input",
+            name: "projectName",
+            message: "Enter project name:",
+            validate: (value: string) =>
+              value.trim().length > 0 || "Project name is required.",
+          },
+        ]);
+
+        projectName = projectAnswer.projectName.trim();
+      }
+
+      if (projectName !== path.basename(projectName)) {
         console.error("Error: Project name cannot contain path separators.");
         process.exit(1);
       }
 
-      const projectPath = path.resolve(process.cwd(), project);
+      const projectPath = path.resolve(process.cwd(), projectName);
 
       if (await fs.pathExists(projectPath)) {
-        console.error(`Error: Directory '${project}' already exists.`);
+        console.error(`Error: Directory '${projectName}' already exists.`);
         process.exit(1);
       }
 
@@ -43,7 +60,7 @@ export const createCommand = new Command("create")
 
       if (!language) {
         questions.push({
-          type: "list",
+          type: "select",
           name: "language",
           message: "Select your preferred language:",
           choices: [
@@ -55,41 +72,18 @@ export const createCommand = new Command("create")
 
       if (!template) {
         questions.push({
-          type: "list",
+          type: "select",
           name: "template",
           message: "Select a template:",
-          choices: [
-            {
-              name: "Blank (Empty project with basic structure)",
-              value: "blank",
-            },
-            { name: "ERC20 (Standard ERC20 Token)", value: "erc20" },
-            { name: "ERC721 (Standard NFT Collection)", value: "erc721" },
-            { name: "ERC1155 (Multi-Token Standard)", value: "erc1155" },
-            {
-              name: "DAO (Basic Decentralized Autonomous Organization)",
-              value: "dao",
-            },
-            { name: "Marketplace (NFT Marketplace)", value: "marketplace" },
-          ],
+          choices: templateChoices,
         });
       }
 
       if (questions.length > 0) {
-        const answers = await inquirer.prompt(questions);
+        const answers = await prompt(questions);
         if (!language) language = answers.language;
         if (!template) template = answers.template;
       }
-
-      const validTemplates = [
-        "blank",
-        "erc20",
-        "erc721",
-        "nft",
-        "erc1155",
-        "dao",
-        "marketplace",
-      ];
 
       if (!validTemplates.includes(template)) {
         console.error(
@@ -120,14 +114,16 @@ export const createCommand = new Command("create")
       const cyan = (text: string) => `\x1b[36m${text}\x1b[0m`;
       const bold = (text: string) => `\x1b[1m${text}\x1b[0m`;
 
+      const displayName = isCurrentDir ? path.basename(process.cwd()) : project;
+
       console.log(cyan(bold(asciiArt)));
       console.log("");
       console.log(
-        `${green(bold("[SUCCESS]"))} CointMU project '${cyan(project)}' initialized!\n`,
+        `${green(bold("[SUCCESS]"))} CointMU project '${cyan(projectName)}' initialized!\n`,
       );
 
       console.log(bold("[>] Next steps to start building:"));
-      console.log(`  1. cd ${project}`);
+      console.log(`  1. cd ${projectName}`);
       console.log(`  2. cmu compile`);
       console.log(`  3. cmu deploy\n`);
 

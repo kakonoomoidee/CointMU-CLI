@@ -1,9 +1,31 @@
 import * as path from "path";
+import { airdropTemplate } from "../templates/airdrop";
+import { daoTemplate } from "../templates/dao";
+import { erc1155Template } from "../templates/erc1155";
 import { erc20Template } from "../templates/erc20";
 import { erc721Template } from "../templates/erc721";
-import { erc1155Template } from "../templates/erc1155";
-import { daoTemplate } from "../templates/dao";
+import { kyberionTemplate } from "../templates/kyberion";
 import { marketplaceTemplate } from "../templates/marketplace";
+import { stakingTemplate } from "../templates/staking";
+import { vaultTemplate } from "../templates/vault";
+
+export const templateChoices = [
+  { name: "Blank (Empty project with basic structure)", value: "blank" },
+  { name: "ERC20 (Standard ERC20 Token)", value: "erc20" },
+  { name: "ERC721 (Standard NFT Collection)", value: "erc721" },
+  { name: "ERC1155 (Multi-Token Standard)", value: "erc1155" },
+  { name: "DAO (Basic Decentralized Autonomous Organization)", value: "dao" },
+  { name: "Marketplace (NFT Marketplace)", value: "marketplace" },
+  { name: "Staking (ERC20 staking and yield farming)", value: "staking" },
+  { name: "Airdrop (Merkle tree token airdrop)", value: "airdrop" },
+  { name: "Vault (Multisig timelock treasury)", value: "vault" },
+  { name: "Kyberion (PQC research prototype)", value: "kyberion" },
+] as const;
+
+export const validTemplates = [
+  ...templateChoices.map((choice) => choice.value),
+  "nft",
+];
 
 const gitignoreTemplate = `# Logs
 logs
@@ -143,7 +165,7 @@ main().catch(console.error);
 /**
  * Scaffolds a new CointMU project based on the selected template and language.
  * @param projectPath {string} The absolute path to the project directory.
- * @param template {string} The template to use ('blank', 'erc20', 'erc721', 'erc1155', 'dao', 'marketplace').
+ * @param template {string} The template to use.
  * @param language {string} The language to use ('typescript' or 'javascript').
  * @returns {Promise<void>} Resolves when scaffolding is complete.
  */
@@ -231,6 +253,24 @@ export async function generateProject(
   } else if (template === "marketplace") {
     contractSrc = marketplaceTemplate;
     contractName = "StandardMarketplace";
+    deployArgs = "";
+  } else if (template === "staking") {
+    contractSrc = stakingTemplate;
+    contractName = "StandardStaking";
+    deployArgs =
+      "'0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000002', 1";
+  } else if (template === "airdrop") {
+    contractSrc = airdropTemplate;
+    contractName = "StandardAirdrop";
+    deployArgs =
+      "'0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000000000000000000000000000000'";
+  } else if (template === "vault") {
+    contractSrc = vaultTemplate;
+    contractName = "StandardVault";
+    deployArgs = "['0x0000000000000000000000000000000000000001'], 1, 0";
+  } else if (template === "kyberion") {
+    contractSrc = kyberionTemplate;
+    contractName = "Kyberion";
     deployArgs = "";
   }
 

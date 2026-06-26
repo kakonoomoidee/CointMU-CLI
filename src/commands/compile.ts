@@ -1,5 +1,36 @@
 import { Command } from "commander";
 import * as path from "path";
+import * as fs from "fs";
+
+/**
+ * Resolves imported Solidity files by reading their contents.
+ *
+ * @param {string} importPath - The path of the imported Solidity file.
+ * @returns {{ contents: string } | { error: string }} An object containing the file contents or an error message.
+ */
+function findImports(
+  importPath: string,
+): { contents: string } | { error: string } {
+  try {
+    const localPath = path.resolve(process.cwd(), importPath);
+    if (fs.existsSync(localPath)) {
+      return { contents: fs.readFileSync(localPath, "utf8") };
+    }
+
+    const nodeModulesPath = path.resolve(
+      process.cwd(),
+      "node_modules",
+      importPath,
+    );
+    if (fs.existsSync(nodeModulesPath)) {
+      return { contents: fs.readFileSync(nodeModulesPath, "utf8") };
+    }
+
+    return { error: "File not found" };
+  } catch {
+    return { error: "File not found" };
+  }
+}
 
 export const compileCommand = new Command("compile")
   .description(
@@ -11,6 +42,31 @@ export const compileCommand = new Command("compile")
       const solc = require("solc");
       const contractsDir = path.resolve(process.cwd(), "contracts");
       const artifactsDir = path.resolve(process.cwd(), "artifacts");
+      const configPathTs = path.resolve(process.cwd(), "cmu.config.ts");
+      const configPathJs = path.resolve(process.cwd(), "cmu.config.js");
+
+      let compilerSettings: Record<string, unknown> = {};
+      let configPath: string | null = null;
+      if (await fs.pathExists(configPathTs)) {
+        configPath = configPathTs;
+      } else if (await fs.pathExists(configPathJs)) {
+        configPath = configPathJs;
+      }
+
+      if (configPath) {
+        try {
+          if (configPath.endsWith(".ts")) {
+            require("ts-node/register/transpile-only");
+          }
+          const loadedConfig = require(configPath);
+          const cmuConfig = loadedConfig?.default ?? loadedConfig;
+          compilerSettings = cmuConfig?.compiler?.settings ?? {};
+        } catch {
+          console.warn(
+            `Warning: failed to load ${path.basename(configPath)}. Using defaults.`,
+          );
+        }
+      }
 
       if (!(await fs.pathExists(contractsDir))) {
         console.error(
@@ -34,6 +90,19 @@ export const compileCommand = new Command("compile")
         sources[file] = { content };
       }
 
+      const settings: Record<string, unknown> = {
+        ...compilerSettings,
+        outputSelection: {
+          "*": {
+            "*": ["abi", "evm.bytecode"],
+          },
+        },
+      };
+
+      if (!("evmVersion" in settings)) {
+        settings.evmVersion = "paris";
+      }
+
       const input = {
         language: "Solidity",
         sources,
@@ -48,7 +117,9 @@ export const compileCommand = new Command("compile")
       };
 
       console.log("Compiling contracts...");
-      const output = JSON.parse(solc.compile(JSON.stringify(input)));
+      const output = JSON.parse(
+        solc.compile(JSON.stringify(input), { import: findImports }),
+      );
 
       if (output.errors) {
         let hasError = false;
