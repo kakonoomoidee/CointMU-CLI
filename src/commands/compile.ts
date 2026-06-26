@@ -1,5 +1,36 @@
 import { Command } from "commander";
 import * as path from "path";
+import * as fs from "fs";
+
+/**
+ * Resolves imported Solidity files by reading their contents.
+ *
+ * @param {string} importPath - The path of the imported Solidity file.
+ * @returns {{ contents: string } | { error: string }} An object containing the file contents or an error message.
+ */
+function findImports(
+  importPath: string,
+): { contents: string } | { error: string } {
+  try {
+    const localPath = path.resolve(process.cwd(), importPath);
+    if (fs.existsSync(localPath)) {
+      return { contents: fs.readFileSync(localPath, "utf8") };
+    }
+
+    const nodeModulesPath = path.resolve(
+      process.cwd(),
+      "node_modules",
+      importPath,
+    );
+    if (fs.existsSync(nodeModulesPath)) {
+      return { contents: fs.readFileSync(nodeModulesPath, "utf8") };
+    }
+
+    return { error: "File not found" };
+  } catch {
+    return { error: "File not found" };
+  }
+}
 
 export const compileCommand = new Command("compile")
   .description(
@@ -30,7 +61,7 @@ export const compileCommand = new Command("compile")
           const loadedConfig = require(configPath);
           const cmuConfig = loadedConfig?.default ?? loadedConfig;
           compilerSettings = cmuConfig?.compiler?.settings ?? {};
-        } catch (error) {
+        } catch {
           console.warn(
             `Warning: failed to load ${path.basename(configPath)}. Using defaults.`,
           );
@@ -79,7 +110,9 @@ export const compileCommand = new Command("compile")
       };
 
       console.log("Compiling contracts...");
-      const output = JSON.parse(solc.compile(JSON.stringify(input)));
+      const output = JSON.parse(
+        solc.compile(JSON.stringify(input), { import: findImports }),
+      );
 
       if (output.errors) {
         let hasError = false;
