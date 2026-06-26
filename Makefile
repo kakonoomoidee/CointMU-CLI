@@ -3,9 +3,9 @@
 # ==========================================
 
 VERSION = 1
-PATCHLEVEL = 0
+PATCHLEVEL = 1
 SUBLEVEL = 0
-EXTRAVERSION = beta
+EXTRAVERSION = aries
 
 .PHONY: help dev build install-global clean
 
