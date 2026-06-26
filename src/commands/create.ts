@@ -60,7 +60,7 @@ export const createCommand = new Command("create")
 
       if (!language) {
         questions.push({
-          type: "list",
+          type: "select",
           name: "language",
           message: "Select your preferred language:",
           choices: [
@@ -72,7 +72,7 @@ export const createCommand = new Command("create")
 
       if (!template) {
         questions.push({
-          type: "list",
+          type: "select",
           name: "template",
           message: "Select a template:",
           choices: templateChoices,
@@ -80,7 +80,7 @@ export const createCommand = new Command("create")
       }
 
       if (questions.length > 0) {
-        const answers = await inquirer.prompt(questions);
+        const answers = await prompt(questions);
         if (!language) language = answers.language;
         if (!template) template = answers.template;
       }
@@ -113,6 +113,8 @@ export const createCommand = new Command("create")
       const green = (text: string) => `\x1b[32m${text}\x1b[0m`;
       const cyan = (text: string) => `\x1b[36m${text}\x1b[0m`;
       const bold = (text: string) => `\x1b[1m${text}\x1b[0m`;
+
+      const displayName = isCurrentDir ? path.basename(process.cwd()) : project;
 
       console.log(cyan(bold(asciiArt)));
       console.log("");
