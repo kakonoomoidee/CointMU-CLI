@@ -14,7 +14,7 @@ function runDeployScript(scriptPath: string): Promise<void> {
     const args = ext === ".ts" ? ["ts-node", scriptPath] : [scriptPath];
 
     console.log(`\n========================================`);
-    console.log(`🚀 Executing: ${path.basename(scriptPath)}`);
+    console.log(`Executing: ${path.basename(scriptPath)}`);
     console.log(`========================================\n`);
 
     const child = spawn(runner, args, {
@@ -79,7 +79,7 @@ export const deployCommand = new Command("deploy")
         await runDeployScript(fullPath);
       }
 
-      console.log("\n✅ All deployment scripts executed successfully.");
+      console.log("\nAll deployment scripts executed successfully.");
     } catch (error) {
       console.error("\n[!] Deployment failed:");
       console.error(error instanceof Error ? error.message : String(error));

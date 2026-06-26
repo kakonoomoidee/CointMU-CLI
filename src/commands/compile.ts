@@ -106,7 +106,14 @@ export const compileCommand = new Command("compile")
       const input = {
         language: "Solidity",
         sources,
-        settings,
+        settings: {
+          evmVersion: "paris",
+          outputSelection: {
+            "*": {
+              "*": ["abi", "evm.bytecode.object"],
+            },
+          },
+        },
       };
 
       console.log("Compiling contracts...");
