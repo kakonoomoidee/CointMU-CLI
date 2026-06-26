@@ -1,30 +1,30 @@
-import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import eslint from "@eslint/js";
+import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ['dist/', 'node_modules/', 'coverage/']
+    ignores: ["dist/", "node_modules/", "coverage/"],
   },
   {
-    files: ['scripts/**/*.js'],
+    files: ["scripts/**/*.js"],
     languageOptions: {
       globals: {
-        console: 'readonly',
-        __dirname: 'readonly',
-        process: 'readonly',
-        require: 'readonly'
-      }
-    }
+        console: "readonly",
+        __dirname: "readonly",
+        process: "readonly",
+        require: "readonly",
+      },
+    },
   },
   {
     rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-      '@typescript-eslint/no-var-requires': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': 'warn',
-      'no-useless-assignment': 'off'
-    }
-  }
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-var-requires": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "no-useless-assignment": "off",
+    },
+  },
 );
