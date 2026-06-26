@@ -22,6 +22,7 @@ export const createCommand = new Command("create")
     try {
       const fs = require("fs-extra");
       const inquirer = require("inquirer");
+      const prompt = inquirer.prompt ?? inquirer.default?.prompt;
       const { generateProject } = require("../utils/template");
 
       const isCurrentDir = project === ".";
@@ -80,7 +81,7 @@ export const createCommand = new Command("create")
       }
 
       if (questions.length > 0) {
-        const answers = await inquirer.prompt(questions);
+        const answers = await prompt(questions);
         if (!language) language = answers.language;
         if (!template) template = answers.template;
       }
