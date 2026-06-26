@@ -80,9 +80,13 @@ export const createCommand = new Command("create")
       }
 
       if (questions.length > 0) {
-        const answers = await prompt(questions);
-        if (!language) language = answers.language;
-        if (!template) template = answers.template;
+        const answers = (await inquirer.prompt(questions)) as {
+          language?: string;
+          template?: string;
+        };
+
+        if (!language && answers.language) language = answers.language;
+        if (!template && answers.template) template = answers.template;
       }
 
       if (!validTemplates.includes(template)) {
@@ -113,8 +117,6 @@ export const createCommand = new Command("create")
       const green = (text: string) => `\x1b[32m${text}\x1b[0m`;
       const cyan = (text: string) => `\x1b[36m${text}\x1b[0m`;
       const bold = (text: string) => `\x1b[1m${text}\x1b[0m`;
-
-      const displayName = isCurrentDir ? path.basename(process.cwd()) : project;
 
       console.log(cyan(bold(asciiArt)));
       console.log("");
