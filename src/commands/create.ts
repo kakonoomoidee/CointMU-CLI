@@ -34,15 +34,18 @@ export const createCommand = new Command("create")
             name: "projectName",
             message: "Enter project name:",
             validate: (value: string) =>
-              value.trim().length > 0 || "Project name is required.",
+              /^[a-zA-Z0-9_-]+$/.test(value.trim()) ||
+              "Project name can only contain alphanumeric characters, hyphens, and underscores.",
           },
         ]);
 
         projectName = projectAnswer.projectName.trim();
       }
 
-      if (projectName !== path.basename(projectName)) {
-        console.error("Error: Project name cannot contain path separators.");
+      if (!/^[a-zA-Z0-9_-]+$/.test(projectName)) {
+        console.error(
+          "Error: Project name can only contain alphanumeric characters, hyphens, and underscores.",
+        );
         process.exit(1);
       }
 

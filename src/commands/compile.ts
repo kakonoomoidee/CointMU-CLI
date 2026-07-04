@@ -13,21 +13,23 @@ function findImports(
   importPath: string,
 ): { contents: string } | { error: string } {
   try {
-    const localPath = path.resolve(process.cwd(), importPath);
-    if (fs.existsSync(localPath)) {
+    const cwd = process.cwd();
+    const localPath = path.resolve(cwd, importPath);
+
+    // Ensure the resolved path remains within the current working directory
+    if (localPath.startsWith(cwd) && fs.existsSync(localPath)) {
       return { contents: fs.readFileSync(localPath, "utf8") };
     }
 
-    const nodeModulesPath = path.resolve(
-      process.cwd(),
-      "node_modules",
-      importPath,
-    );
-    if (fs.existsSync(nodeModulesPath)) {
+    const nodeModulesPath = path.resolve(cwd, "node_modules", importPath);
+    if (
+      nodeModulesPath.startsWith(path.resolve(cwd, "node_modules")) &&
+      fs.existsSync(nodeModulesPath)
+    ) {
       return { contents: fs.readFileSync(nodeModulesPath, "utf8") };
     }
 
-    return { error: "File not found" };
+    return { error: "File not found or access denied" };
   } catch {
     return { error: "File not found" };
   }
