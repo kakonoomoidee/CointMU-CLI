@@ -38,6 +38,32 @@ function maskPrivateKey(pk: string): string {
   return `${pk.substring(0, 5)}...${pk.substring(pk.length - 4)}`;
 }
 
+/**
+ * Pings the given RPC URL to verify network connectivity.
+ * @param {string} rpcUrl - The RPC URL to test.
+ * @returns {Promise<void>} Resolves if connected, exits process if unreachable.
+ */
+async function pingNetwork(rpcUrl: string): Promise<void> {
+  const { ethers } = require("ethers");
+  console.log(`Pinging RPC URL: ${rpcUrl}...`);
+  try {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const networkData: any = await Promise.race([
+      provider.getNetwork(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 3000),
+      ),
+    ]);
+    console.log(
+      `[SUCCESS] Connected to network '${networkData.name}' (Chain ID: ${networkData.chainId})`,
+    );
+    process.exit(0);
+  } catch {
+    console.error(`[ERROR] Unreachable RPC URL: ${rpcUrl}`);
+    process.exit(1);
+  }
+}
+
 export const deployCommand = new Command("deploy")
   .description(
     "Sequentially executes all deployment scripts in the deploy/ directory",
@@ -46,7 +72,11 @@ export const deployCommand = new Command("deploy")
     "-c, --config",
     "Display the current deployment configuration and exit",
   )
-  .action(async (options: { config?: boolean }) => {
+  .option(
+    "-p, --ping",
+    "Ping the configured RPC network to check connectivity and exit",
+  )
+  .action(async (options: { config?: boolean; ping?: boolean }) => {
     try {
       const fs = require("fs-extra");
       const deployDir = path.resolve(process.cwd(), "deploy");
@@ -87,6 +117,10 @@ export const deployCommand = new Command("deploy")
           `Error: Network configuration for '${defaultNetworkName}' not found.`,
         );
         process.exit(1);
+      }
+
+      if (options.ping) {
+        await pingNetwork(network.url);
       }
 
       const privateKey = config.wallet?.privateKey || process.env.PRIVATE_KEY;
