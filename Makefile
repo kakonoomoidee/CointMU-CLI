@@ -6,6 +6,7 @@ VERSION = 1
 PATCHLEVEL = 1
 SUBLEVEL = 0
 EXTRAVERSION = aries
+BUILD = 948fcfd7
 
 .PHONY: help dev build install-global clean
 
@@ -24,6 +25,7 @@ dev:
 	npm run watch
 
 build:
+	npx ts-node update-build.ts
 	npm run build
 
 install-global:

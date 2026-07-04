@@ -1,11 +1,12 @@
 import { Command } from "commander";
-import { getRandomSadQuote } from "../utils/quotes";
 
 /**
  * Executes the hidden easter egg sequence.
- * @returns {void}
+ * @returns {Promise<void>}
  */
-function runAries(): void {
+async function runAries(): Promise<void> {
+  const { getRandomSadQuote } = await import("../utils/quotes");
+
   const dim = "\x1b[2m";
   const cyan = "\x1b[36m";
   const green = "\x1b[32m";

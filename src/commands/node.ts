@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import { loadConfig } from "../utils/config";
 
 export const nodeCommand = new Command("node").description(
   "Node management commands",
@@ -12,7 +11,10 @@ nodeCommand
   )
   .action(async () => {
     try {
-      let rpcUrl = "http://localhost:8545"; // Default
+      const { loadConfig } = await import("../utils/config");
+      const { ethers } = await import("ethers");
+
+      let rpcUrl = "http://localhost:8545";
 
       try {
         const config = await loadConfig();
@@ -24,7 +26,6 @@ nodeCommand
       }
 
       console.log(`Pinging CointMU node at ${rpcUrl}...`);
-      const { ethers } = require("ethers");
       const provider = new ethers.JsonRpcProvider(rpcUrl);
       const network = await provider.getNetwork();
       const blockNumber = await provider.getBlockNumber();

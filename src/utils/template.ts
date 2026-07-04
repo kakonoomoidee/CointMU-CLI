@@ -1,4 +1,6 @@
 import * as path from "path";
+import { execSync } from "child_process";
+import { generateConfigFiles } from "./configGenerator";
 import { airdropTemplate } from "../templates/airdrop";
 import { daoTemplate } from "../templates/dao";
 import { erc1155Template } from "../templates/erc1155";
@@ -26,56 +28,6 @@ export const validTemplates = [
   ...templateChoices.map((choice) => choice.value),
   "nft",
 ];
-
-const gitignoreTemplate = `# Logs
-logs
-*.log
-npm-debug.log*
-
-# Dependency directories
-node_modules/
-
-# Compiled artifacts
-artifacts/
-deployments/
-dist/
-
-# Env files
-.env
-.env.test
-.env.production
-.env.local
-`;
-
-/**
- * Builds the cmu.config file contents for the selected language.
- * @param language {string} The language to use ('typescript' or 'javascript').
- * @returns {string} The configuration file source code.
- */
-function getConfigTemplate(language: string): string {
-  if (language === "typescript") {
-    return `export default {
-  network: {
-    rpcUrl: "http://localhost:8545",
-    chainId: 1337
-  },
-  compiler: {
-    version: "0.8.20"
-  }
-};
-`;
-  }
-  return `module.exports = {
-  network: {
-    rpcUrl: "http://localhost:8545",
-    chainId: 1337
-  },
-  compiler: {
-    version: "0.8.20"
-  }
-};
-`;
-}
 
 /**
  * Builds the deployment script source for a given contract.
@@ -114,7 +66,7 @@ async function main() {
   const privateKey = process.env.PRIVATE_KEY;
   if (!privateKey) throw new Error('PRIVATE_KEY environment variable is required');
   
-  const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+  const provider = new ethers.JsonRpcProvider(process.env.CMU_RPC_URL || 'http://localhost:8545');
   const wallet = new ethers.Wallet(privateKey, provider);
 
   const factory = new ethers.ContractFactory(abi, bytecode, wallet);
@@ -151,6 +103,7 @@ const blankDeployTemplate = (language: string): string =>
 
 async function main() {
   console.log('Deploy script executed!');
+  const provider = new ethers.JsonRpcProvider(process.env.CMU_RPC_URL || 'http://localhost:8545');
   // Add your deployment logic here
 }
 
@@ -164,10 +117,12 @@ main().catch(console.error);
 
 /**
  * Scaffolds a new CointMU project based on the selected template and language.
- * @param projectPath {string} The absolute path to the project directory.
- * @param template {string} The template to use.
- * @param language {string} The language to use ('typescript' or 'javascript').
- * @returns {Promise<void>} Resolves when scaffolding is complete.
+ * Generates all boilerplate files, writes a package.json, and installs ethers.
+ *
+ * @param {string} projectPath - The absolute path to the project directory.
+ * @param {string} template - The template identifier to use.
+ * @param {string} language - The language to use ('typescript' or 'javascript').
+ * @returns {Promise<void>} Resolves when scaffolding and dependency installation are complete.
  */
 export async function generateProject(
   projectPath: string,
@@ -180,24 +135,8 @@ export async function generateProject(
     await fs.ensureDir(path.join(projectPath, dir));
   }
 
-  await fs.writeFile(
-    path.join(projectPath, ".gitignore"),
-    gitignoreTemplate,
-    "utf8",
-  );
-  await fs.writeFile(
-    path.join(projectPath, ".env.example"),
-    "PRIVATE_KEY=your_private_key_here\n",
-    "utf8",
-  );
-  await fs.writeFile(
-    path.join(
-      projectPath,
-      `cmu.config.${language === "typescript" ? "ts" : "js"}`,
-    ),
-    getConfigTemplate(language),
-    "utf8",
-  );
+  await generateConfigFiles(projectPath, language);
+
   await fs.writeFile(
     path.join(projectPath, "artifacts", ".gitkeep"),
     "",
@@ -217,7 +156,6 @@ export async function generateProject(
       compilerOptions: {
         target: "ES2022",
         module: "CommonJS",
-        moduleResolution: "node",
         strict: true,
         esModuleInterop: true,
         skipLibCheck: true,
@@ -300,5 +238,31 @@ export async function generateProject(
       getDeployScript(contractName, deployArgs, language),
       "utf8",
     );
+  }
+
+  const projectName = path.basename(projectPath);
+  const packageJson = {
+    name: projectName,
+    version: "1.0.0",
+    description: `CointMU ${template} project`,
+    dependencies: {},
+  };
+
+  await fs.writeJson(path.join(projectPath, "package.json"), packageJson, {
+    spaces: 2,
+  });
+
+  console.log("Installing dependencies...");
+  execSync("npm install ethers", {
+    cwd: projectPath,
+    stdio: "inherit",
+  });
+
+  if (language === "typescript") {
+    console.log("Installing development dependencies...");
+    execSync("npm install --save-dev @types/node", {
+      cwd: projectPath,
+      stdio: "inherit",
+    });
   }
 }

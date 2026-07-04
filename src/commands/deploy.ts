@@ -1,45 +1,28 @@
 import { Command } from "commander";
-import { spawn } from "child_process";
 import * as path from "path";
 
 /**
- * Executes a deployment script in a child process.
- * @param scriptPath {string} The absolute path to the script to execute.
- * @returns {Promise<void>} Resolves when the script successfully completes.
+ * Executes a deployment script using child_process.execSync.
+ * @param {string} scriptPath - The absolute path to the script to execute.
+ * @param {Record<string, string | undefined>} env - Environment variables to inject.
+ * @returns {void}
  */
-function runDeployScript(scriptPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const ext = path.extname(scriptPath);
-    const runner = ext === ".ts" ? "npx" : "node";
-    const args = ext === ".ts" ? ["ts-node", scriptPath] : [scriptPath];
+function runDeployScript(
+  scriptPath: string,
+  env: Record<string, string | undefined>,
+): void {
+  const { execSync } = require("child_process");
+  const ext = path.extname(scriptPath);
+  const runner = ext === ".ts" ? "npx ts-node" : "node";
+  const command = `${runner} "${scriptPath}"`;
 
-    console.log(`\n========================================`);
-    console.log(`Executing: ${path.basename(scriptPath)}`);
-    console.log(`========================================\n`);
+  console.log(`\n========================================`);
+  console.log(`Executing: ${path.basename(scriptPath)}`);
+  console.log(`========================================\n`);
 
-    const child = spawn(runner, args, {
-      shell: true,
-      stdio: "inherit",
-      env: {
-        ...process.env,
-      },
-    });
-
-    child.on("error", (error) => {
-      reject(error);
-    });
-
-    child.on("close", (code) => {
-      if (code !== 0) {
-        reject(
-          new Error(
-            `Script ${path.basename(scriptPath)} exited with code ${code}`,
-          ),
-        );
-      } else {
-        resolve();
-      }
-    });
+  execSync(command, {
+    stdio: "inherit",
+    env,
   });
 }
 
@@ -59,6 +42,60 @@ export const deployCommand = new Command("deploy")
       process.exit(1);
     }
 
+    require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
+
+    let config;
+    const tsConfigPath = path.resolve(process.cwd(), "cmu.config.ts");
+    const jsConfigPath = path.resolve(process.cwd(), "cmu.config.js");
+
+    if (await fs.pathExists(tsConfigPath)) {
+      require("ts-node").register({
+        transpileOnly: true,
+        compilerOptions: { module: "CommonJS" },
+      });
+      const mod = require(tsConfigPath);
+      config = mod.default || mod;
+    } else if (await fs.pathExists(jsConfigPath)) {
+      config = require(jsConfigPath);
+    } else {
+      console.error("Error: cmu.config.js or cmu.config.ts not found.");
+      process.exit(1);
+    }
+
+    const defaultNetworkName = config.defaultNetwork || "cointmu_local";
+    const network = config.networks?.[defaultNetworkName];
+
+    if (!network) {
+      console.error(
+        `Error: Network configuration for '${defaultNetworkName}' not found.`,
+      );
+      process.exit(1);
+    }
+
+    const privateKey = config.wallet?.privateKey || process.env.PRIVATE_KEY;
+    if (!privateKey) {
+      console.error(
+        "Error: PRIVATE_KEY is not defined in the configuration or .env file.",
+      );
+      process.exit(1);
+    }
+
+    const { ethers } = require("ethers");
+    let wallet;
+    try {
+      wallet = new ethers.Wallet(privateKey);
+    } catch {
+      console.error("Error: Invalid PRIVATE_KEY provided.");
+      process.exit(1);
+    }
+
+    console.log(`\n--- Deployment Metadata ---`);
+    console.log(`Network Name  : ${defaultNetworkName}`);
+    console.log(`RPC URL       : ${network.url}`);
+    console.log(`Chain ID      : ${network.chainId}`);
+    console.log(`Deployer      : ${wallet.address}`);
+    console.log(`---------------------------\n`);
+
     try {
       const files: string[] = await fs.readdir(deployDir);
       const scripts = files
@@ -74,9 +111,15 @@ export const deployCommand = new Command("deploy")
         `Found ${scripts.length} deployment script(s). Starting sequential deployment...`,
       );
 
+      const injectedEnv = {
+        ...process.env,
+        CMU_RPC_URL: network.url,
+        CMU_CHAIN_ID: String(network.chainId),
+      };
+
       for (const script of scripts) {
         const fullPath = path.join(deployDir, script);
-        await runDeployScript(fullPath);
+        runDeployScript(fullPath, injectedEnv);
       }
 
       console.log("\nAll deployment scripts executed successfully.");

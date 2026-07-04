@@ -1,10 +1,8 @@
 import { Command } from "commander";
-import { spawn } from "child_process";
-import { loadConfig } from "../utils/config";
 
 /**
  * Validates that a string is a well-formed HTTP or HTTPS URL.
- * @param value {string} The URL string to validate.
+ * @param {string} value - The URL string to validate.
  * @returns {boolean} True if the value is a valid http or https URL.
  */
 function isValidHttpUrl(value: string): boolean {
@@ -16,25 +14,6 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
-/**
- * Opens a URL in the default browser using the platform-specific launcher
- * without invoking a shell, preventing command injection.
- * @param url {string} The validated http or https URL to open.
- * @returns {void}
- */
-function openInBrowser(url: string): void {
-  const child =
-    process.platform === "win32"
-      ? spawn("cmd", ["/c", "start", "", url], { shell: false })
-      : spawn(process.platform === "darwin" ? "open" : "xdg-open", [url], {
-          shell: false,
-        });
-
-  child.on("error", (error) => {
-    console.error("Failed to open explorer:", error.message);
-  });
-}
-
 export const explorerCommand = new Command("explorer").description(
   "Explorer commands",
 );
@@ -44,7 +23,10 @@ explorerCommand
   .description("Opens the local CointMU block explorer UI")
   .action(async () => {
     try {
-      let explorerUrl = "http://localhost:3000"; // Default placeholder
+      const { spawn } = await import("child_process");
+      const { loadConfig } = await import("../utils/config");
+
+      let explorerUrl = "http://localhost:3000";
 
       try {
         const config = await loadConfig();
@@ -63,7 +45,19 @@ explorerCommand
       }
 
       console.log(`Opening CointMU explorer at ${explorerUrl}...`);
-      openInBrowser(explorerUrl);
+
+      const child =
+        process.platform === "win32"
+          ? spawn("cmd", ["/c", "start", "", explorerUrl], { shell: false })
+          : spawn(
+              process.platform === "darwin" ? "open" : "xdg-open",
+              [explorerUrl],
+              { shell: false },
+            );
+
+      child.on("error", (error) => {
+        console.error("Failed to open explorer:", error.message);
+      });
     } catch (error) {
       console.error("An error occurred:", error);
       process.exit(1);

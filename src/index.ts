@@ -1,62 +1,77 @@
 #!/usr/bin/env node
 
-require("dotenv").config({ quiet: true });
-
+import * as fs from "fs";
+import * as path from "path";
 import { Command } from "commander";
 
-import { compileCommand } from "./commands/compile";
-import { deployCommand } from "./commands/deploy";
-import { walletCommand } from "./commands/wallet";
-import { createCommand } from "./commands/create";
-import { explorerCommand } from "./commands/explorer";
-import { nodeCommand } from "./commands/node";
-import { auditCommand } from "./commands/audit";
-import { ariesCommand } from "./commands/aries";
+require("dotenv").config({ quiet: true });
+
+const pkgPath = path.resolve(__dirname, "..", "package.json");
+const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 
 const program = new Command();
-
-const packageJson = require("../package.json");
 
 program
   .name("cmu")
   .description(
-    `${packageJson.description}\nTip: Run cmu <command> -h to see detailed options for a specific command.`,
-  )
-  .option("-V, --version", "output the version number")
-  .on("option:version", () => {
-    const solc = require("solc");
-    const ethers = require("ethers");
-    const { execSync } = require("child_process");
+    `${pkg.description}\nTip: Run cmu <command> -h to see detailed options for a specific command.`,
+  );
 
-    let gitCommit = "unknown";
-    try {
-      gitCommit = execSync("git rev-parse --short HEAD", {
-        stdio: "pipe",
-        cwd: __dirname,
-      })
-        .toString()
-        .trim();
-    } catch {
-      // Ignore if not in a git repository
-    }
+/**
+ * Loads all command modules in parallel and registers them on the program,
+ * then parses process arguments asynchronously.
+ * @returns {Promise<void>} Resolves when all commands are registered and arguments are parsed.
+ */
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
 
-    console.log("cmu");
-    console.log(`version : ${packageJson.version}`);
-    console.log(`git commit : ${gitCommit}`);
-    console.log(`architecture : ${process.arch}`);
-    console.log(`node : ${process.version}`);
-    console.log(`solidity : ${solc.version()}`);
-    console.log(`ethers : ${ethers.version}`);
-    process.exit(0);
-  });
+  if (args.length === 1 && (args[0] === "-V" || args[0] === "--version")) {
+    const { printVersionInfo } = await import("./commands/version");
+    printVersionInfo();
+    return;
+  }
 
-program.addCommand(compileCommand);
-program.addCommand(deployCommand);
-program.addCommand(walletCommand);
-program.addCommand(createCommand);
-program.addCommand(explorerCommand);
-program.addCommand(nodeCommand);
-program.addCommand(auditCommand);
-program.addCommand(ariesCommand, { hidden: true });
+  const [
+    { compileCommand },
+    { deployCommand },
+    { walletCommand },
+    { createCommand },
+    { explorerCommand },
+    { nodeCommand },
+    { auditCommand },
+    { ariesCommand },
+    { versionCommand },
+  ] = await Promise.all([
+    import("./commands/compile"),
+    import("./commands/deploy"),
+    import("./commands/wallet"),
+    import("./commands/create"),
+    import("./commands/explorer"),
+    import("./commands/node"),
+    import("./commands/audit"),
+    import("./commands/aries"),
+    import("./commands/version"),
+  ]);
 
-program.parse(process.argv);
+  program.addCommand(compileCommand);
+  program.addCommand(deployCommand);
+  program.addCommand(walletCommand);
+  program.addCommand(createCommand);
+  program.addCommand(explorerCommand);
+  program.addCommand(nodeCommand);
+  program.addCommand(auditCommand);
+  program.addCommand(versionCommand);
+  program.addCommand(ariesCommand, { hidden: true });
+
+  if (args.length === 0) {
+    program.help();
+    return;
+  }
+
+  await program.parseAsync(process.argv);
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});

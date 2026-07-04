@@ -4,6 +4,7 @@ import * as fs from "fs";
 
 /**
  * Resolves imported Solidity files by reading their contents.
+ * Required to be synchronous by the solc compiler import callback API.
  *
  * @param {string} importPath - The path of the imported Solidity file.
  * @returns {{ contents: string } | { error: string }} An object containing the file contents or an error message.

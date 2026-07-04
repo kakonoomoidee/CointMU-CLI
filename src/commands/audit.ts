@@ -1,13 +1,14 @@
 import { Command } from "commander";
-import { spawn } from "child_process";
 
 /**
  * Executes an external command in a child process.
- * @param command {string} The command to execute (e.g. 'npm', 'npx').
- * @param args {string[]} The arguments to pass to the command.
+ * @param {string} command - The command to execute (e.g. 'npm', 'npx').
+ * @param {string[]} args - The arguments to pass to the command.
  * @returns {Promise<void>} Resolves when the command successfully completes.
  */
-function runCommand(command: string, args: string[]): Promise<void> {
+async function runCommand(command: string, args: string[]): Promise<void> {
+  const { spawn } = await import("child_process");
+
   return new Promise((resolve, reject) => {
     console.log(`\x1b[36m> Executing: ${command} ${args.join(" ")}\x1b[0m`);
 

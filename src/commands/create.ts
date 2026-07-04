@@ -1,8 +1,5 @@
 import { Command } from "commander";
 import * as path from "path";
-import { getRandomQuote } from "../utils/quotes";
-import inquirer from "inquirer";
-import { templateChoices, validTemplates } from "../utils/template";
 
 interface CreateOptions {
   template?: string;
@@ -22,8 +19,11 @@ export const createCommand = new Command("create")
   )
   .action(async (project: string | undefined, options: CreateOptions) => {
     try {
-      const fs = require("fs-extra");
-      const { generateProject } = require("../utils/template");
+      const fs = await import("fs-extra");
+      const { default: inquirer } = await import("inquirer");
+      const { templateChoices, validTemplates, generateProject } =
+        await import("../utils/template");
+      const { getRandomQuote } = await import("../utils/quotes");
 
       let projectName = project?.trim() ?? "";
 
@@ -60,7 +60,7 @@ export const createCommand = new Command("create")
 
       if (!language) {
         questions.push({
-          type: "select",
+          type: "list",
           name: "language",
           message: "Select your preferred language:",
           choices: [
@@ -72,7 +72,7 @@ export const createCommand = new Command("create")
 
       if (!template) {
         questions.push({
-          type: "select",
+          type: "list",
           name: "template",
           message: "Select a template:",
           choices: templateChoices,

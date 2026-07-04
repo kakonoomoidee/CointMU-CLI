@@ -7,7 +7,7 @@
     "cmu": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "prepublishOnly": "npm run build",
     "prepare": "husky"
   },
@@ -30,7 +30,8 @@
     "lint-staged": "^17.0.8",
     "prettier": "^3.8.3",
     "typescript": "^5.1.6",
-    "typescript-eslint": "^8.61.1"
+    "typescript-eslint": "^8.61.1",
+    "tsup": "^8.5.0"
   },
   "lint-staged": {
     "src/**/*.ts": [
