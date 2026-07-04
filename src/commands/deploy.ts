@@ -26,11 +26,25 @@ function runDeployScript(
   });
 }
 
+/**
+ * Masks a private key for secure console output.
+ * @param {string} pk - The private key to mask.
+ * @returns {string} The masked private key.
+ */
+function maskPrivateKey(pk: string): string {
+  if (pk.length < 10) return "***";
+  return `${pk.substring(0, 5)}...${pk.substring(pk.length - 4)}`;
+}
+
 export const deployCommand = new Command("deploy")
   .description(
     "Sequentially executes all deployment scripts in the deploy/ directory",
   )
-  .action(async () => {
+  .option(
+    "-c, --config",
+    "Display the current deployment configuration and exit",
+  )
+  .action(async (options: { config?: boolean }) => {
     const fs = require("fs-extra");
     const deployDir = path.resolve(process.cwd(), "deploy");
 
@@ -94,7 +108,14 @@ export const deployCommand = new Command("deploy")
     console.log(`RPC URL       : ${network.url}`);
     console.log(`Chain ID      : ${network.chainId}`);
     console.log(`Deployer      : ${wallet.address}`);
+    if (options.config) {
+      console.log(`Private Key   : ${maskPrivateKey(privateKey)}`);
+    }
     console.log(`---------------------------\n`);
+
+    if (options.config) {
+      process.exit(0);
+    }
 
     try {
       const files: string[] = await fs.readdir(deployDir);
