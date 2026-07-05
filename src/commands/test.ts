@@ -4,7 +4,11 @@ import * as fs from "fs-extra";
 
 export const testCommand = new Command("test")
   .description("Executes the automated smart contract test suite")
-  .action(async () => {
+  .option(
+    "--gas",
+    "Enable gas profiler to report gas used by transactions during tests",
+  )
+  .action(async (options: { gas?: boolean }) => {
     try {
       console.log("Triggering automated contract compilation...");
       const { runCompile } = await import("./compile");
@@ -109,6 +113,53 @@ export const testCommand = new Command("test")
 
         console.log("\nAll tests executed successfully.");
       } finally {
+        if (options.gas) {
+          try {
+            console.log(
+              "\n=========================================================================================",
+            );
+            console.log("Gas Profiler Report");
+            console.log(
+              "=========================================================================================",
+            );
+            console.log(
+              "| Block | Transaction Hash                                                   | Gas Used |",
+            );
+            console.log(
+              "-----------------------------------------------------------------------------------------",
+            );
+
+            const { ethers } = require("ethers");
+            const rpcProvider = new ethers.JsonRpcProvider(
+              `http://127.0.0.1:${port}`,
+            );
+            const latestBlock = await rpcProvider.getBlockNumber();
+            let totalGas = 0n;
+
+            for (let i = 1; i <= latestBlock; i++) {
+              const block = await rpcProvider.getBlock(i);
+              if (block && block.transactions) {
+                for (const txHash of block.transactions) {
+                  const receipt =
+                    await rpcProvider.getTransactionReceipt(txHash);
+                  if (receipt) {
+                    const gasUsed = receipt.gasUsed;
+                    totalGas += gasUsed;
+                    console.log(
+                      `| ${i.toString().padEnd(5)} | ${txHash} | ${gasUsed.toString().padEnd(8)} |`,
+                    );
+                  }
+                }
+              }
+            }
+            console.log(
+              "-----------------------------------------------------------------------------------------",
+            );
+            console.log(`Total Gas Used: ${totalGas.toString()}\n`);
+          } catch (e) {
+            console.error("Failed to generate gas report", e);
+          }
+        }
         await server.close();
         console.log("Ephemeral test network successfully shut down.");
       }
