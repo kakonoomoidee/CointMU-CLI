@@ -1,6 +1,6 @@
 {
   "name": "cmu-cli",
-  "version": "1.2.0-scorpio",
+  "version": "1.2.1-gemini",
   "description": "Primary development toolkit for the CointMU blockchain",
   "main": "dist/index.js",
   "bin": {

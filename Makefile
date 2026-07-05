@@ -4,8 +4,8 @@
 
 VERSION = 1
 PATCHLEVEL = 2
-SUBLEVEL = 0
-EXTRAVERSION = scorpio
+SUBLEVEL = 1
+EXTRAVERSION = gemini
 BUILD = a2daa155
 
 .PHONY: help dev build install-global clean
