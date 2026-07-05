@@ -4,8 +4,8 @@
 
 VERSION = 1
 PATCHLEVEL = 2
-SUBLEVEL = 1
-EXTRAVERSION = gemini
+SUBLEVEL = 2
+EXTRAVERSION = tvrstsp
 BUILD = a2daa155
 
 .PHONY: help dev build install-global clean
