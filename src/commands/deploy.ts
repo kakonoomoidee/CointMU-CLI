@@ -78,6 +78,10 @@ export const deployCommand = new Command("deploy")
   .action(
     async (options: { config?: boolean; ping?: boolean; network?: string }) => {
       try {
+        console.log("Triggering automated contract compilation...");
+        const { runCompile } = await import("./compile");
+        await runCompile();
+
         const fs = require("fs-extra");
         const deployDir = path.resolve(process.cwd(), "deploy");
 
