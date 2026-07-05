@@ -91,40 +91,14 @@ export const deployCommand = new Command("deploy")
 
         require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
 
-        let config;
-        const tsConfigPath = path.resolve(process.cwd(), "cmu.config.ts");
-        const jsConfigPath = path.resolve(process.cwd(), "cmu.config.js");
-
-        if (await fs.pathExists(tsConfigPath)) {
-          require("ts-node").register({
-            transpileOnly: true,
-            compilerOptions: { module: "CommonJS" },
-          });
-          const mod = require(tsConfigPath);
-          config = mod.default || mod;
-        } else if (await fs.pathExists(jsConfigPath)) {
-          config = require(jsConfigPath);
-        } else {
-          console.error("Error: cmu.config.js or cmu.config.ts not found.");
-          process.exit(1);
-        }
-
-        const targetNetwork =
-          options.network || config.defaultNetwork || "local";
-        const network = config.networks?.[targetNetwork];
-
-        if (!network) {
-          console.error(
-            `Error: Network configuration for '${targetNetwork}' not found.`,
-          );
-          process.exit(1);
-        }
+        const { resolveNetwork } = await import("../utils/network");
+        const network = await resolveNetwork(options.network);
 
         if (options.ping) {
           await pingNetwork(network.url);
         }
 
-        const privateKey = config.wallet?.privateKey || process.env.PRIVATE_KEY;
+        const privateKey = network.privateKey;
 
         // Dereference from parent memory to prevent leakage
         if (process.env.PRIVATE_KEY) {
@@ -148,7 +122,7 @@ export const deployCommand = new Command("deploy")
         }
 
         console.log(`\n--- Deployment Metadata ---`);
-        console.log(`Network Name  : ${targetNetwork}`);
+        console.log(`Network Name  : ${network.name}`);
         console.log(`RPC URL       : ${network.url}`);
         console.log(`Chain ID      : ${network.chainId}`);
         console.log(`Deployer      : ${wallet.address}`);

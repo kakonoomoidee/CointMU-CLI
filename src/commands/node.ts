@@ -7,21 +7,14 @@ export const nodeCommand = new Command("node")
 nodeCommand
   .command("connect")
   .description("Pings the configured RPC endpoint to test connectivity")
-  .action(async () => {
+  .option("-n, --network <name>", "Specify the network to connect to")
+  .action(async (options: { network?: string }) => {
     try {
-      const { loadConfig } = await import("../utils/config");
+      const { resolveNetwork } = await import("../utils/network");
       const { ethers } = await import("ethers");
 
-      let rpcUrl = "http://localhost:8545";
-
-      try {
-        const config = await loadConfig();
-        if (config?.network?.rpcUrl) {
-          rpcUrl = config.network.rpcUrl;
-        }
-      } catch {
-        // Fallback to default if config not found
-      }
+      const networkConfig = await resolveNetwork(options.network);
+      const rpcUrl = networkConfig.url;
 
       console.log(`Pinging CointMU node at ${rpcUrl}...`);
       const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -36,7 +29,9 @@ nodeCommand
       console.error(
         "Failed to connect to the CointMU node. Is the node running?",
       );
-      console.error(error);
+      if (nodeCommand.opts().verbose) {
+        console.error(error);
+      }
       process.exit(1);
     }
   });
@@ -45,15 +40,24 @@ nodeCommand
   .command("start")
   .description("Starts a local development network with pre-funded accounts")
   .option("--host <host>", "Host to bind the server to", "127.0.0.1")
+  .option("-p, --port <number>", "Port to bind the local EVM node to", "8585")
   .option(
     "-m, --mnemonic <phrase>",
     "12-word mnemonic seed phrase to generate deterministic accounts",
   )
   .option("-l, --log", "Enable real-time RPC transaction logging")
   .action(
-    async (options: { host: string; mnemonic?: string; log?: boolean }) => {
+    async (options: {
+      host: string;
+      port: string;
+      mnemonic?: string;
+      log?: boolean;
+    }) => {
       try {
+        const isVerbose = nodeCommand.opts().verbose;
+
         const suppressWarning = (args: any[]) => {
+          if (isVerbose) return false;
           const msg = args.join(" ");
           return (
             msg.includes("uws_win32") ||
@@ -85,7 +89,11 @@ nodeCommand
         };
 
         const ganache = require("ganache");
-        const port = 8585;
+        const port = parseInt(options.port, 10);
+        if (isNaN(port) || port <= 0 || port > 65535) {
+          console.error("Error: Invalid port specified.");
+          process.exit(1);
+        }
         const chainId = 1912;
         const host = options.host;
 
@@ -119,7 +127,9 @@ nodeCommand
                   },
                 },
               }
-            : { quiet: true },
+            : isVerbose
+              ? {}
+              : { quiet: true },
         };
 
         const server = ganache.server(serverOptions);
