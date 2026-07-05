@@ -3,10 +3,10 @@
 # ==========================================
 
 VERSION = 1
-PATCHLEVEL = 1
+PATCHLEVEL = 2
 SUBLEVEL = 0
-EXTRAVERSION = aries
-BUILD = 972168e7
+EXTRAVERSION = scorpio
+BUILD = a2464d00
 
 .PHONY: help dev build install-global clean
 
