@@ -44,9 +44,7 @@ export function printVersionInfo(): void {
 }
 
 export const versionCommand = new Command("version")
-  .description(
-    "Display detailed version information including runtime and dependency versions",
-  )
+  .description("Displays detailed CLI, runtime, and dependency versions")
   .action(() => {
     printVersionInfo();
   });

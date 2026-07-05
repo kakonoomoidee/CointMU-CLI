@@ -7,7 +7,9 @@ interface CreateOptions {
 }
 
 export const createCommand = new Command("create")
-  .description("Scaffolds a new CointMU project")
+  .description(
+    "Initializes a new CointMU workspace with pre-configured templates",
+  )
   .argument("[project]", "Name of the project directory to create")
   .option(
     "-t, --template <template>",

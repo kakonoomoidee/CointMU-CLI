@@ -15,7 +15,7 @@ function isValidHttpUrl(value: string): boolean {
 }
 
 export const explorerCommand = new Command("explorer").description(
-  "Explorer commands",
+  "Interacts with the block explorer for on-chain data retrieval",
 );
 
 explorerCommand

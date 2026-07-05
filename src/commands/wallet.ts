@@ -6,9 +6,7 @@ export const walletCommand = new Command("wallet").description(
 
 walletCommand
   .command("create")
-  .description(
-    "Generates a new crypto wallet and outputs the public/private keys",
-  )
+  .description("Manages local wallets and cryptographic keypairs")
   .action(() => {
     try {
       const { ethers } = require("ethers");

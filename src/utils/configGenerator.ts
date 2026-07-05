@@ -2,10 +2,14 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 const cmuConfigJs = `module.exports = {
-  defaultNetwork: "cointmu_local",
+  defaultNetwork: "local",
   networks: {
-    cointmu_local: {
+    local: {
       url: "http://127.0.0.1:8585",
+      chainId: 1912,
+    },
+    mainnet: {
+      url: "http://10.64.24.248:8585",
       chainId: 1912,
     },
   },
@@ -19,10 +23,14 @@ const cmuConfigJs = `module.exports = {
 `;
 
 const cmuConfigTs = `export default {
-  defaultNetwork: "cointmu_local",
+  defaultNetwork: "local",
   networks: {
-    cointmu_local: {
+    local: {
       url: "http://127.0.0.1:8585",
+      chainId: 1912,
+    },
+    mainnet: {
+      url: "http://10.64.24.248:8585",
       chainId: 1912,
     },
   },

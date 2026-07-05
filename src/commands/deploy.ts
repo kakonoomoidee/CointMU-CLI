@@ -65,9 +65,7 @@ async function pingNetwork(rpcUrl: string): Promise<void> {
 }
 
 export const deployCommand = new Command("deploy")
-  .description(
-    "Sequentially executes all deployment scripts in the deploy/ directory",
-  )
+  .description("Executes deployment scripts to broadcast contracts on-chain")
   .option(
     "-c, --config",
     "Display the current deployment configuration and exit",
@@ -76,120 +74,124 @@ export const deployCommand = new Command("deploy")
     "-p, --ping",
     "Ping the configured RPC network to check connectivity and exit",
   )
-  .action(async (options: { config?: boolean; ping?: boolean }) => {
-    try {
-      const fs = require("fs-extra");
-      const deployDir = path.resolve(process.cwd(), "deploy");
-
-      if (!(await fs.pathExists(deployDir))) {
-        console.error(`Error: 'deploy' directory not found at ${deployDir}.`);
-        console.error(
-          `Please run this command from the root of your CointMU project.`,
-        );
-        process.exit(1);
-      }
-
-      require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
-
-      let config;
-      const tsConfigPath = path.resolve(process.cwd(), "cmu.config.ts");
-      const jsConfigPath = path.resolve(process.cwd(), "cmu.config.js");
-
-      if (await fs.pathExists(tsConfigPath)) {
-        require("ts-node").register({
-          transpileOnly: true,
-          compilerOptions: { module: "CommonJS" },
-        });
-        const mod = require(tsConfigPath);
-        config = mod.default || mod;
-      } else if (await fs.pathExists(jsConfigPath)) {
-        config = require(jsConfigPath);
-      } else {
-        console.error("Error: cmu.config.js or cmu.config.ts not found.");
-        process.exit(1);
-      }
-
-      const defaultNetworkName = config.defaultNetwork || "cointmu_local";
-      const network = config.networks?.[defaultNetworkName];
-
-      if (!network) {
-        console.error(
-          `Error: Network configuration for '${defaultNetworkName}' not found.`,
-        );
-        process.exit(1);
-      }
-
-      if (options.ping) {
-        await pingNetwork(network.url);
-      }
-
-      const privateKey = config.wallet?.privateKey || process.env.PRIVATE_KEY;
-
-      // Dereference from parent memory to prevent leakage
-      if (process.env.PRIVATE_KEY) {
-        delete process.env.PRIVATE_KEY;
-      }
-
-      if (!privateKey) {
-        console.error(
-          "Error: PRIVATE_KEY is not defined in the configuration or .env file.",
-        );
-        process.exit(1);
-      }
-
-      const { ethers } = require("ethers");
-      let wallet;
+  .option("-n, --network <name>", "Specify the network to deploy to")
+  .action(
+    async (options: { config?: boolean; ping?: boolean; network?: string }) => {
       try {
-        wallet = new ethers.Wallet(privateKey);
-      } catch {
-        console.error("Error: Invalid PRIVATE_KEY provided.");
+        const fs = require("fs-extra");
+        const deployDir = path.resolve(process.cwd(), "deploy");
+
+        if (!(await fs.pathExists(deployDir))) {
+          console.error(`Error: 'deploy' directory not found at ${deployDir}.`);
+          console.error(
+            `Please run this command from the root of your CointMU project.`,
+          );
+          process.exit(1);
+        }
+
+        require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
+
+        let config;
+        const tsConfigPath = path.resolve(process.cwd(), "cmu.config.ts");
+        const jsConfigPath = path.resolve(process.cwd(), "cmu.config.js");
+
+        if (await fs.pathExists(tsConfigPath)) {
+          require("ts-node").register({
+            transpileOnly: true,
+            compilerOptions: { module: "CommonJS" },
+          });
+          const mod = require(tsConfigPath);
+          config = mod.default || mod;
+        } else if (await fs.pathExists(jsConfigPath)) {
+          config = require(jsConfigPath);
+        } else {
+          console.error("Error: cmu.config.js or cmu.config.ts not found.");
+          process.exit(1);
+        }
+
+        const targetNetwork =
+          options.network || config.defaultNetwork || "local";
+        const network = config.networks?.[targetNetwork];
+
+        if (!network) {
+          console.error(
+            `Error: Network configuration for '${targetNetwork}' not found.`,
+          );
+          process.exit(1);
+        }
+
+        if (options.ping) {
+          await pingNetwork(network.url);
+        }
+
+        const privateKey = config.wallet?.privateKey || process.env.PRIVATE_KEY;
+
+        // Dereference from parent memory to prevent leakage
+        if (process.env.PRIVATE_KEY) {
+          delete process.env.PRIVATE_KEY;
+        }
+
+        if (!privateKey) {
+          console.error(
+            "Error: PRIVATE_KEY is not defined in the configuration or .env file.",
+          );
+          process.exit(1);
+        }
+
+        const { ethers } = require("ethers");
+        let wallet;
+        try {
+          wallet = new ethers.Wallet(privateKey);
+        } catch {
+          console.error("Error: Invalid PRIVATE_KEY provided.");
+          process.exit(1);
+        }
+
+        console.log(`\n--- Deployment Metadata ---`);
+        console.log(`Network Name  : ${targetNetwork}`);
+        console.log(`RPC URL       : ${network.url}`);
+        console.log(`Chain ID      : ${network.chainId}`);
+        console.log(`Deployer      : ${wallet.address}`);
+        if (options.config) {
+          console.log(`Private Key   : ${maskPrivateKey(privateKey)}`);
+        }
+        console.log(`---------------------------\n`);
+
+        if (options.config) {
+          process.exit(0);
+        }
+
+        const files: string[] = await fs.readdir(deployDir);
+        const scripts = files
+          .filter((f) => f.endsWith(".ts") || f.endsWith(".js"))
+          .sort((a, b) => a.localeCompare(b)); // Sorts 01_... before 02_...
+
+        if (scripts.length === 0) {
+          console.log("No deployment scripts found in deploy/ directory.");
+          return;
+        }
+
+        console.log(
+          `Found ${scripts.length} deployment script(s). Starting sequential deployment...`,
+        );
+
+        const injectedEnv = {
+          ...process.env,
+          CMU_RPC_URL: network.url,
+          CMU_CHAIN_ID: String(network.chainId),
+          PRIVATE_KEY: privateKey,
+        };
+
+        for (const script of scripts) {
+          const fullPath = path.join(deployDir, script);
+          runDeployScript(fullPath, injectedEnv);
+        }
+
+        console.log("\nAll deployment scripts executed successfully.");
+      } catch (error) {
+        console.error("\n[!] Deployment failed:");
+        console.error(error instanceof Error ? error.message : String(error));
         process.exit(1);
       }
-
-      console.log(`\n--- Deployment Metadata ---`);
-      console.log(`Network Name  : ${defaultNetworkName}`);
-      console.log(`RPC URL       : ${network.url}`);
-      console.log(`Chain ID      : ${network.chainId}`);
-      console.log(`Deployer      : ${wallet.address}`);
-      if (options.config) {
-        console.log(`Private Key   : ${maskPrivateKey(privateKey)}`);
-      }
-      console.log(`---------------------------\n`);
-
-      if (options.config) {
-        process.exit(0);
-      }
-
-      const files: string[] = await fs.readdir(deployDir);
-      const scripts = files
-        .filter((f) => f.endsWith(".ts") || f.endsWith(".js"))
-        .sort((a, b) => a.localeCompare(b)); // Sorts 01_... before 02_...
-
-      if (scripts.length === 0) {
-        console.log("No deployment scripts found in deploy/ directory.");
-        return;
-      }
-
-      console.log(
-        `Found ${scripts.length} deployment script(s). Starting sequential deployment...`,
-      );
-
-      const injectedEnv = {
-        ...process.env,
-        CMU_RPC_URL: network.url,
-        CMU_CHAIN_ID: String(network.chainId),
-        PRIVATE_KEY: privateKey,
-      };
-
-      for (const script of scripts) {
-        const fullPath = path.join(deployDir, script);
-        runDeployScript(fullPath, injectedEnv);
-      }
-
-      console.log("\nAll deployment scripts executed successfully.");
-    } catch (error) {
-      console.error("\n[!] Deployment failed:");
-      console.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
+    },
+  );

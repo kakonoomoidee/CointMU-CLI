@@ -35,7 +35,7 @@ async function runCommand(command: string, args: string[]): Promise<void> {
 
 export const auditCommand = new Command("audit")
   .description(
-    "Runs security checks and audits on the project dependencies and smart contracts",
+    "Performs static security analysis on contracts and dependencies",
   )
   .option("--fix", "Automatically apply safe fixes for vulnerabilities")
   .action(async (options) => {

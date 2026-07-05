@@ -36,9 +36,7 @@ function findImports(
 }
 
 export const compileCommand = new Command("compile")
-  .description(
-    "Reads Solidity files from the contracts folder and compiles them using solc",
-  )
+  .description("Compiles smart contracts into ABI and bytecode artifacts")
   .action(async () => {
     try {
       const fs = require("fs-extra");
