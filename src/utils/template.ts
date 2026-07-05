@@ -130,10 +130,38 @@ export async function generateProject(
   language: string,
 ): Promise<void> {
   const fs = require("fs-extra");
-  const dirs = ["contracts", "scripts", "artifacts", "deployments", "deploy"];
+  const dirs = [
+    "contracts",
+    "scripts",
+    "artifacts",
+    "deployments",
+    "deploy",
+    "test",
+  ];
   for (const dir of dirs) {
     await fs.ensureDir(path.join(projectPath, dir));
   }
+
+  const ext = language === "typescript" ? "ts" : "js";
+
+  const templateTestContent = `import { expect } from "chai";
+import { ethers } from "ethers";
+
+describe("Deployment Template Test", function () {
+  it("Should connect to the local ephemeral node successfully", async function () {
+    const provider = new ethers.JsonRpcProvider(process.env.CMU_RPC_URL || "http://127.0.0.1:8555");
+    const network = await provider.getNetwork();
+    
+    expect(Number(network.chainId)).to.be.greaterThan(0);
+  });
+});
+`;
+
+  await fs.writeFile(
+    path.join(projectPath, "test", `Template.test.${ext}`),
+    templateTestContent,
+    "utf8",
+  );
 
   await generateConfigFiles(projectPath, language);
 
@@ -148,8 +176,6 @@ export async function generateProject(
     "utf8",
   );
   await fs.writeFile(path.join(projectPath, "scripts", ".gitkeep"), "", "utf8");
-
-  const ext = language === "typescript" ? "ts" : "js";
 
   if (language === "typescript") {
     const tsconfig = {
@@ -245,6 +271,9 @@ export async function generateProject(
     name: projectName,
     version: "1.0.0",
     description: `CointMU ${template} project`,
+    scripts: {
+      test: "cmu test",
+    },
     dependencies: {},
   };
 
@@ -260,7 +289,16 @@ export async function generateProject(
 
   if (language === "typescript") {
     console.log("Installing development dependencies...");
-    execSync("npm install --save-dev @types/node", {
+    execSync(
+      "npm install --save-dev @types/node mocha chai @types/mocha @types/chai",
+      {
+        cwd: projectPath,
+        stdio: "inherit",
+      },
+    );
+  } else {
+    console.log("Installing development dependencies...");
+    execSync("npm install --save-dev mocha chai", {
       cwd: projectPath,
       stdio: "inherit",
     });
