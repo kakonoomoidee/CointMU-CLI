@@ -42,6 +42,8 @@ async function main(): Promise<void> {
     { ariesCommand },
     { versionCommand },
     { testCommand },
+    { mineCommand },
+    { networkCommand },
   ] = await Promise.all([
     import("./commands/compile"),
     import("./commands/deploy"),
@@ -53,6 +55,8 @@ async function main(): Promise<void> {
     import("./commands/aries"),
     import("./commands/version"),
     import("./commands/test"),
+    import("./commands/mine"),
+    import("./commands/network"),
   ]);
 
   program.addCommand(compileCommand);
@@ -64,6 +68,8 @@ async function main(): Promise<void> {
   program.addCommand(auditCommand);
   program.addCommand(versionCommand);
   program.addCommand(testCommand);
+  program.addCommand(mineCommand);
+  program.addCommand(networkCommand);
   program.addCommand(ariesCommand, { hidden: true });
 
   if (args.length === 0) {

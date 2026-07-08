@@ -10,10 +10,10 @@ nodeCommand
   .option("-n, --network <name>", "Specify the network to connect to")
   .action(async (options: { network?: string }) => {
     try {
-      const { resolveNetwork } = await import("../utils/network");
+      const { getDynamicNetwork } = await import("../utils/network");
       const { ethers } = await import("ethers");
 
-      const networkConfig = await resolveNetwork(options.network);
+      const networkConfig = await getDynamicNetwork(options.network);
       const rpcUrl = networkConfig.url;
 
       console.log(`Pinging CointMU node at ${rpcUrl}...`);

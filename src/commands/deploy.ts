@@ -95,8 +95,8 @@ export const deployCommand = new Command("deploy")
 
         require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
 
-        const { resolveNetwork } = await import("../utils/network");
-        const network = await resolveNetwork(options.network);
+        const { getDeployNetwork } = await import("../utils/network");
+        const network = await getDeployNetwork(options.network);
 
         if (options.ping) {
           await pingNetwork(network.url);
