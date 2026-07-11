@@ -54,6 +54,10 @@ nodeCommand
       log?: boolean;
     }) => {
       try {
+        const { killPort } = await import("../utils/process");
+        const parsedPort = parseInt(options.port, 10);
+        await killPort(!isNaN(parsedPort) ? parsedPort : 8585);
+
         const isVerbose = nodeCommand.opts().verbose;
 
         const suppressWarning = (args: any[]) => {
@@ -88,6 +92,10 @@ nodeCommand
           originalConsoleLog(...args);
         };
 
+        const { ethers } = await import("ethers");
+        const resolvedMnemonic =
+          options.mnemonic || ethers.Wallet.createRandom().mnemonic?.phrase;
+
         const ganache = require("ganache");
         const port = parseInt(options.port, 10);
         if (isNaN(port) || port <= 0 || port > 65535) {
@@ -108,7 +116,7 @@ nodeCommand
           wallet: {
             totalAccounts: 10,
             defaultBalance: 100,
-            ...(options.mnemonic ? { mnemonic: options.mnemonic } : {}),
+            mnemonic: resolvedMnemonic,
           },
           miner: {
             instamine: "strict",
