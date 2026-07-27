@@ -170,7 +170,7 @@ function main() {
   runCommand("git add .");
   runCommand(`git commit -m "chore: release version ${newVersion}"`);
   runCommand(`git tag -a v${newVersion} -m "Release v${newVersion}"`);
-  runCommand("git push origin main");
+  runCommand("git push origin HEAD");
   runCommand("git push origin --tags");
 
   console.log(`Successfully released version ${newVersion}`);
