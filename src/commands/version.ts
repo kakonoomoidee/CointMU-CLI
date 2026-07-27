@@ -35,7 +35,7 @@ export async function runVersion(
     const pkgPath = path.resolve(__dirname, "..", "package.json");
     const buildPath = path.resolve(__dirname, "..", "build-info.json");
 
-    let pkg = { version: "unknown" };
+    let pkg = { version: "unknown", codename: "unknown" };
     let buildInfo = { build: "unknown" };
 
     if (await fs.pathExists(pkgPath)) {
@@ -53,6 +53,7 @@ export async function runVersion(
 
     console.log("cmu");
     console.log(`version      : ${pkg.version}`);
+    console.log(`codename     : ${pkg.codename}`);
     console.log(`build        : ${buildInfo.build}`);
     console.log(`architecture : ${process.arch}`);
     console.log(`node         : ${process.version}`);

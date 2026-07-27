@@ -176,16 +176,7 @@ async function runNodeStart(options: {
     originalConsoleLog(
       `WARNING: This is a development mnemonic. DO NOT use it on a mainnet.\n`,
     );
-    originalConsoleLog("Pre-funded Developer Accounts (100 ETH each):");
-    originalConsoleLog(
-      "===========================================================================================================",
-    );
-    originalConsoleLog(
-      "| Index | Public Address                             | Private Key                                         |",
-    );
-    originalConsoleLog(
-      "===========================================================================================================",
-    );
+    originalConsoleLog("\nPre-funded Developer Accounts (100 ETH each):");
 
     let index = 0;
     const mnemonicObj = ethers.Mnemonic.fromPhrase(resolvedMnemonic!);
@@ -194,14 +185,12 @@ async function runNodeStart(options: {
         mnemonicObj,
         `m/44'/60'/0'/0/${i}`,
       );
-      originalConsoleLog(
-        `| [${index}]   | ${wallet.address} | ${wallet.privateKey} |`,
-      );
+      originalConsoleLog(`\n[ Account #${index} ]`);
+      originalConsoleLog(`Address     : ${wallet.address}`);
+      originalConsoleLog(`Private Key : ${wallet.privateKey}`);
       index++;
     }
-    originalConsoleLog(
-      "===========================================================================================================\n",
-    );
+    originalConsoleLog("\n");
 
     process.on("SIGINT", () => {
       originalConsoleLog("\nShutting down CointMU DevNet...");
