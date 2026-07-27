@@ -1,4 +1,9 @@
-import * as path from "path";
+const CONFIG_FILE_NAME = "cmu.config.ts";
+const MODULE_FORMAT = "CommonJS";
+const TS_COMPILER = "typescript@5";
+const FS_EXTRA_PKG = "fs-extra";
+const PATH_PKG = "path";
+const TS_NODE_PKG = "ts-node";
 
 export interface CmuConfig {
   network?: {
@@ -16,19 +21,24 @@ export interface CmuConfig {
  * @returns {Promise<CmuConfig>} Resolves with the parsed configuration object.
  */
 export async function loadConfig(): Promise<CmuConfig> {
-  const fs = require("fs-extra");
-  const configPath = path.resolve(process.cwd(), "cmu.config.ts");
+  const fs =
+    (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
+  const path = await import(PATH_PKG);
+
+  const configPath = path.resolve(process.cwd(), CONFIG_FILE_NAME);
 
   if (!(await fs.pathExists(configPath))) {
     throw new Error(
-      "Error: cmu.config.ts not found. Are you in a CointMU project?",
+      `Error: ${CONFIG_FILE_NAME} not found. Are you in a CointMU project?`,
     );
   }
 
-  require("ts-node").register({
+  const tsNode = await import(TS_NODE_PKG);
+  tsNode.register({
     transpileOnly: true,
+    compiler: TS_COMPILER,
     compilerOptions: {
-      module: "CommonJS",
+      module: MODULE_FORMAT,
     },
   });
 

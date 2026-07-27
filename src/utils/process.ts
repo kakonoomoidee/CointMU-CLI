@@ -1,7 +1,8 @@
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
+const LISTENING_STATE = "LISTENING";
+const CHILD_PROCESS_PKG = "child_process";
+const UTIL_PKG = "util";
+const NETSTAT_CMD = "netstat -ano | findstr :";
+const TASKKILL_CMD = "taskkill /F /PID ";
 
 /**
  * Checks if a specific port is occupied and forcefully terminates the process occupying it.
@@ -12,7 +13,11 @@ const execAsync = promisify(exec);
  */
 export async function killPort(port: number): Promise<void> {
   try {
-    const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
+    const { exec } = await import(CHILD_PROCESS_PKG);
+    const { promisify } = await import(UTIL_PKG);
+    const execAsync = promisify(exec);
+
+    const { stdout } = await execAsync(`${NETSTAT_CMD}${port}`);
 
     if (!stdout) {
       console.log(`Port ${port} is free.`);
@@ -23,7 +28,7 @@ export async function killPort(port: number): Promise<void> {
     let processKilled = false;
 
     for (const line of lines) {
-      if (line.includes(`:${port}`) && line.includes("LISTENING")) {
+      if (line.includes(`:${port}`) && line.includes(LISTENING_STATE)) {
         const parts = line.trim().split(/\s+/);
         const pid = parts[parts.length - 1];
 
@@ -32,7 +37,7 @@ export async function killPort(port: number): Promise<void> {
             `Checking port ${port}... Port occupied by PID ${pid}, killing process...`,
           );
           try {
-            await execAsync(`taskkill /F /PID ${pid}`);
+            await execAsync(`${TASKKILL_CMD}${pid}`);
             processKilled = true;
           } catch {
             console.warn(

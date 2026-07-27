@@ -1,5 +1,8 @@
 import { Command } from "commander";
 
+const EXIT_SUCCESS = 0;
+const EXIT_FAILURE = 1;
+
 /**
  * Executes an external command in a child process.
  * @param {string} command - The command to execute (e.g. 'npm', 'npx').
@@ -14,6 +17,7 @@ async function runCommand(command: string, args: string[]): Promise<void> {
 
     const executable =
       process.platform === "win32" ? `${command}.cmd` : command;
+
     const child = spawn(executable, args, {
       stdio: "inherit",
       shell: false,
@@ -24,7 +28,7 @@ async function runCommand(command: string, args: string[]): Promise<void> {
     });
 
     child.on("close", (code) => {
-      if (code !== 0) {
+      if (code !== EXIT_SUCCESS) {
         reject(new Error(`Command failed with exit code ${code}`));
       } else {
         resolve();
@@ -38,7 +42,8 @@ export const auditCommand = new Command("audit")
     "Performs static security analysis on contracts and dependencies",
   )
   .option("--fix", "Automatically apply safe fixes for vulnerabilities")
-  .action(async (options) => {
+  .option("-v, --verbose", "Enable verbose logging for debugging")
+  .action(async (options: { fix?: boolean; verbose?: boolean }) => {
     try {
       console.log(
         "\n\x1b[1m\x1b[34m[1/2] Auditing Node.js Dependencies\x1b[0m",
@@ -51,7 +56,7 @@ export const auditCommand = new Command("audit")
 
       await runCommand("npm", npmArgs).catch(() => {
         console.warn(
-          `\x1b[33mWarning: Node dependency audit reported issues.\x1b[0m`,
+          "\x1b[33mWarning: Node dependency audit reported issues.\x1b[0m",
         );
       });
 
@@ -66,14 +71,20 @@ export const auditCommand = new Command("audit")
 
       await runCommand("npx", solhintArgs).catch(() => {
         console.warn(
-          `\x1b[33mWarning: Solidity static analysis found vulnerabilities or formatting issues.\x1b[0m`,
+          "\x1b[33mWarning: Solidity static analysis found vulnerabilities or formatting issues.\x1b[0m",
         );
       });
 
       console.log("\n\x1b[1m\x1b[32m[+] Audit process completed.\x1b[0m\n");
     } catch (error) {
       console.error("\n\x1b[31m[!] Audit failed to execute completely.\x1b[0m");
-      console.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
+
+      if (options.verbose) {
+        console.error(error);
+      } else {
+        console.error(error instanceof Error ? error.message : String(error));
+      }
+
+      process.exit(EXIT_FAILURE);
     }
   });

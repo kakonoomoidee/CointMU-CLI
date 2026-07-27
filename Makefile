@@ -5,8 +5,8 @@
 VERSION = 1
 PATCHLEVEL = 2
 SUBLEVEL = 3
-EXTRAVERSION = Sagitarius
-BUILD = 29294123
+CODENAME = draco
+BUILD = 654d591c
 
 .PHONY: help dev build install-global clean
 
@@ -25,7 +25,6 @@ dev:
 	npm run watch
 
 build:
-	npx ts-node update-build.ts
 	npm run build
 
 install-global:

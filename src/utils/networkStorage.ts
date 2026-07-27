@@ -1,12 +1,25 @@
-import * as fs from "fs-extra";
-import * as path from "path";
-import * as os from "os";
+const NETWORKS_FILE_NAME = ".cmu-networks.json";
+const DEFAULT_NETWORK_NAME = "local";
+const DEFAULT_RPC_URL = "http://127.0.0.1:8585";
+const JSON_SPACES = 2;
 
-const NETWORKS_FILE = path.join(os.homedir(), ".cmu-networks.json");
+const FS_EXTRA_PKG = "fs-extra";
+const PATH_PKG = "path";
+const OS_PKG = "os";
 
 export interface NetworkEntry {
   name: string;
   rpcUrl: string;
+}
+
+/**
+ * Gets the absolute path to the networks storage file lazily.
+ * @returns {Promise<string>} The file path.
+ */
+async function getNetworksFilePath(): Promise<string> {
+  const os = await import(OS_PKG);
+  const path = await import(PATH_PKG);
+  return path.join(os.homedir(), NETWORKS_FILE_NAME);
 }
 
 /**
@@ -15,14 +28,18 @@ export interface NetworkEntry {
  * @returns {Promise<NetworkEntry[]>} The array of saved networks.
  */
 export async function loadNetworks(): Promise<NetworkEntry[]> {
-  if (!(await fs.pathExists(NETWORKS_FILE))) {
+  const fs =
+    (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
+  const filePath = await getNetworksFilePath();
+
+  if (!(await fs.pathExists(filePath))) {
     const defaultNetworks: NetworkEntry[] = [
-      { name: "local", rpcUrl: "http://127.0.0.1:8585" },
+      { name: DEFAULT_NETWORK_NAME, rpcUrl: DEFAULT_RPC_URL },
     ];
-    await fs.writeJson(NETWORKS_FILE, defaultNetworks, { spaces: 2 });
+    await fs.writeJson(filePath, defaultNetworks, { spaces: JSON_SPACES });
     return defaultNetworks;
   }
-  return await fs.readJson(NETWORKS_FILE);
+  return await fs.readJson(filePath);
 }
 
 /**
@@ -32,6 +49,9 @@ export async function loadNetworks(): Promise<NetworkEntry[]> {
  * @returns {Promise<void>}
  */
 export async function saveNetwork(name: string, rpcUrl: string): Promise<void> {
+  const fs =
+    (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
+  const filePath = await getNetworksFilePath();
   const networks = await loadNetworks();
   const existingIndex = networks.findIndex((n) => n.name === name);
 
@@ -41,7 +61,7 @@ export async function saveNetwork(name: string, rpcUrl: string): Promise<void> {
     networks.push({ name, rpcUrl });
   }
 
-  await fs.writeJson(NETWORKS_FILE, networks, { spaces: 2 });
+  await fs.writeJson(filePath, networks, { spaces: JSON_SPACES });
 }
 
 /**
@@ -50,6 +70,9 @@ export async function saveNetwork(name: string, rpcUrl: string): Promise<void> {
  * @returns {Promise<boolean>} True if deleted, false if not found.
  */
 export async function deleteNetwork(name: string): Promise<boolean> {
+  const fs =
+    (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
+  const filePath = await getNetworksFilePath();
   const networks = await loadNetworks();
   const existingIndex = networks.findIndex((n) => n.name === name);
 
@@ -58,6 +81,6 @@ export async function deleteNetwork(name: string): Promise<boolean> {
   }
 
   networks.splice(existingIndex, 1);
-  await fs.writeJson(NETWORKS_FILE, networks, { spaces: 2 });
+  await fs.writeJson(filePath, networks, { spaces: JSON_SPACES });
   return true;
 }

@@ -1,6 +1,8 @@
 import { Command } from "commander";
-import * as path from "path";
-import * as fs from "fs";
+
+const EXIT_FAILURE = 1;
+const JSON_SPACES = 2;
+const DEFAULT_EVM_VERSION = "paris";
 
 /**
  * Resolves imported Solidity files by reading their contents.
@@ -13,6 +15,9 @@ function findImports(
   importPath: string,
 ): { contents: string } | { error: string } {
   try {
+    const fs = require("fs");
+    const path = require("path");
+
     const cwd = process.cwd();
     const localPath = path.resolve(cwd, importPath);
 
@@ -38,19 +43,26 @@ function findImports(
 /**
  * Compiles all Solidity contracts found in the contracts directory.
  * Writes the artifacts to the artifacts directory.
- * @returns {Promise<void>}
+ * @param {object} options - CLI options.
+ * @returns {Promise<void>} Resolves when compilation finishes successfully.
  */
-export async function runCompile(): Promise<void> {
+export async function runCompile(
+  options: { verbose?: boolean } = {},
+): Promise<void> {
   try {
     const fs = require("fs-extra");
     const solc = require("solc");
-    const contractsDir = path.resolve(process.cwd(), "contracts");
-    const artifactsDir = path.resolve(process.cwd(), "artifacts");
-    const configPathTs = path.resolve(process.cwd(), "cmu.config.ts");
-    const configPathJs = path.resolve(process.cwd(), "cmu.config.js");
+    const path = require("path");
+
+    const cwd = process.cwd();
+    const contractsDir = path.resolve(cwd, "contracts");
+    const artifactsDir = path.resolve(cwd, "artifacts");
+    const configPathTs = path.resolve(cwd, "cmu.config.ts");
+    const configPathJs = path.resolve(cwd, "cmu.config.js");
 
     let compilerSettings: Record<string, unknown> = {};
     let configPath: string | null = null;
+
     if (await fs.pathExists(configPathTs)) {
       configPath = configPathTs;
     } else if (await fs.pathExists(configPathJs)) {
@@ -73,14 +85,13 @@ export async function runCompile(): Promise<void> {
     }
 
     if (!(await fs.pathExists(contractsDir))) {
-      console.error(
-        "Error: contracts directory not found. Are you in a CointMU project?",
+      throw new Error(
+        "contracts directory not found. Are you in a CointMU project?",
       );
-      process.exit(1);
     }
 
     const files: string[] = await fs.readdir(contractsDir);
-    const solFiles = files.filter((f) => f.endsWith(".sol"));
+    const solFiles = files.filter((f: string) => f.endsWith(".sol"));
 
     if (solFiles.length === 0) {
       console.log("No Solidity files found to compile.");
@@ -94,30 +105,20 @@ export async function runCompile(): Promise<void> {
       sources[file] = { content };
     }
 
-    const settings: Record<string, unknown> = {
+    const finalSettings: Record<string, unknown> = {
+      evmVersion: DEFAULT_EVM_VERSION,
       ...compilerSettings,
       outputSelection: {
         "*": {
-          "*": ["abi", "evm.bytecode"],
+          "*": ["abi", "evm.bytecode.object"],
         },
       },
     };
 
-    if (!("evmVersion" in settings)) {
-      settings.evmVersion = "paris";
-    }
-
     const input = {
       language: "Solidity",
       sources,
-      settings: {
-        evmVersion: "paris",
-        outputSelection: {
-          "*": {
-            "*": ["abi", "evm.bytecode.object"],
-          },
-        },
-      },
+      settings: finalSettings,
     };
 
     console.log("Compiling contracts...");
@@ -132,8 +133,7 @@ export async function runCompile(): Promise<void> {
         if (err.severity === "error") hasError = true;
       }
       if (hasError) {
-        console.error("Compilation failed.");
-        process.exit(1);
+        throw new Error("Compilation failed due to Solidity errors.");
       }
     }
 
@@ -143,19 +143,28 @@ export async function runCompile(): Promise<void> {
       for (const contractName in output.contracts[file]) {
         const contract = output.contracts[file][contractName];
         const artifactPath = path.join(artifactsDir, `${contractName}.json`);
-        await fs.writeJson(artifactPath, contract, { spaces: 2 });
+        await fs.writeJson(artifactPath, contract, { spaces: JSON_SPACES });
         console.log(`Compiled ${contractName} successfully.`);
       }
     }
   } catch (error) {
     console.error(
-      "Failed to compile contracts:",
-      error instanceof Error ? error.message : String(error),
+      "\n\x1b[31m[!] Compilation failed to execute completely.\x1b[0m",
     );
-    process.exit(1);
+
+    if (options.verbose) {
+      console.error(error);
+    } else {
+      console.error(error instanceof Error ? error.message : String(error));
+    }
+
+    process.exit(EXIT_FAILURE);
   }
 }
 
 export const compileCommand = new Command("compile")
   .description("Compiles smart contracts into ABI and bytecode artifacts")
-  .action(runCompile);
+  .option("-v, --verbose", "Enable verbose logging for debugging")
+  .action(async (options: { verbose?: boolean }) => {
+    await runCompile(options);
+  });
