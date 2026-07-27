@@ -1,15 +1,10 @@
-import * as path from "path";
-import { execSync } from "child_process";
 import { generateConfigFiles } from "./configGenerator";
-import { airdropTemplate } from "../templates/airdrop";
-import { daoTemplate } from "../templates/dao";
-import { erc1155Template } from "../templates/erc1155";
-import { erc20Template } from "../templates/erc20";
-import { erc721Template } from "../templates/erc721";
-import { kyberionTemplate } from "../templates/kyberion";
-import { marketplaceTemplate } from "../templates/marketplace";
-import { stakingTemplate } from "../templates/staking";
-import { vaultTemplate } from "../templates/vault";
+
+const TYPESCRIPT_LANG = "typescript";
+const ENCODING = "utf8";
+const FS_EXTRA_PKG = "fs-extra";
+const PATH_PKG = "path";
+const CHILD_PROCESS_PKG = "child_process";
 
 export const templateChoices = [
   { name: "Blank (Empty project with basic structure)", value: "blank" },
@@ -29,13 +24,6 @@ export const validTemplates = [
   "nft",
 ];
 
-/**
- * Builds the deployment script source for a given contract.
- * @param contractName {string} The name of the contract to deploy.
- * @param contractArgs {string} The constructor arguments rendered as source.
- * @param language {string} The language to use ('typescript' or 'javascript').
- * @returns {string} The deployment script source code.
- */
 function getDeployScript(
   contractName: string,
   contractArgs: string,
@@ -49,7 +37,7 @@ import path from 'path';`;
 const fs = require('fs-extra');
 const path = require('path');`;
 
-  return `${language === "typescript" ? tsImports : jsImports}
+  return `${language === TYPESCRIPT_LANG ? tsImports : jsImports}
 
 async function main() {
   console.log('Deploying ${contractName}...');
@@ -93,11 +81,6 @@ main().catch(console.error);
 `;
 }
 
-/**
- * Builds the deployment script source for a blank project.
- * @param language {string} The language to use ('typescript' or 'javascript').
- * @returns {string} The deployment script source code.
- */
 const blankDeployTemplate = (language: string): string =>
   `import { ethers } from 'ethers';
 
@@ -110,26 +93,21 @@ async function main() {
 main().catch(console.error);
 `.replace(
     "import { ethers } from 'ethers';",
-    language === "typescript"
+    language === TYPESCRIPT_LANG
       ? "import { ethers } from 'ethers';"
       : "const { ethers } = require('ethers');",
   );
 
-/**
- * Scaffolds a new CointMU project based on the selected template and language.
- * Generates all boilerplate files, writes a package.json, and installs ethers.
- *
- * @param {string} projectPath - The absolute path to the project directory.
- * @param {string} template - The template identifier to use.
- * @param {string} language - The language to use ('typescript' or 'javascript').
- * @returns {Promise<void>} Resolves when scaffolding and dependency installation are complete.
- */
 export async function generateProject(
   projectPath: string,
   template: string,
   language: string,
 ): Promise<void> {
-  const fs = require("fs-extra");
+  const fs =
+    (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
+  const path = await import(PATH_PKG);
+  const { execSync } = await import(CHILD_PROCESS_PKG);
+
   const dirs = [
     "contracts",
     "scripts",
@@ -142,7 +120,7 @@ export async function generateProject(
     await fs.ensureDir(path.join(projectPath, dir));
   }
 
-  const ext = language === "typescript" ? "ts" : "js";
+  const ext = language === TYPESCRIPT_LANG ? "ts" : "js";
 
   const templateTestContent = `import { expect } from "chai";
 import { ethers } from "ethers";
@@ -160,7 +138,7 @@ describe("Deployment Template Test", function () {
   await fs.writeFile(
     path.join(projectPath, "test", `Template.test.${ext}`),
     templateTestContent,
-    "utf8",
+    ENCODING,
   );
 
   await generateConfigFiles(projectPath, language);
@@ -168,16 +146,20 @@ describe("Deployment Template Test", function () {
   await fs.writeFile(
     path.join(projectPath, "artifacts", ".gitkeep"),
     "",
-    "utf8",
+    ENCODING,
   );
   await fs.writeFile(
     path.join(projectPath, "deployments", ".gitkeep"),
     "",
-    "utf8",
+    ENCODING,
   );
-  await fs.writeFile(path.join(projectPath, "scripts", ".gitkeep"), "", "utf8");
+  await fs.writeFile(
+    path.join(projectPath, "scripts", ".gitkeep"),
+    "",
+    ENCODING,
+  );
 
-  if (language === "typescript") {
+  if (language === TYPESCRIPT_LANG) {
     const tsconfig = {
       compilerOptions: {
         target: "ES2022",
@@ -199,40 +181,49 @@ describe("Deployment Template Test", function () {
   let deployArgs = "";
 
   if (template === "erc20") {
+    const { erc20Template } = await import("../templates/erc20");
     contractSrc = erc20Template;
     contractName = "StandardERC20";
     deployArgs = "'MyToken', 'MTK', 1000000";
   } else if (template === "erc721" || template === "nft") {
+    const { erc721Template } = await import("../templates/erc721");
     contractSrc = erc721Template;
     contractName = "StandardERC721";
     deployArgs = "'MyNFT', 'MNFT'";
   } else if (template === "erc1155") {
+    const { erc1155Template } = await import("../templates/erc1155");
     contractSrc = erc1155Template;
     contractName = "StandardERC1155";
     deployArgs = "'MyTokens', 'MTKS'";
   } else if (template === "dao") {
+    const { daoTemplate } = await import("../templates/dao");
     contractSrc = daoTemplate;
     contractName = "StandardDAO";
     deployArgs = "'MyDAO'";
   } else if (template === "marketplace") {
+    const { marketplaceTemplate } = await import("../templates/marketplace");
     contractSrc = marketplaceTemplate;
     contractName = "StandardMarketplace";
     deployArgs = "";
   } else if (template === "staking") {
+    const { stakingTemplate } = await import("../templates/staking");
     contractSrc = stakingTemplate;
     contractName = "StandardStaking";
     deployArgs =
       "'0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000002', 1";
   } else if (template === "airdrop") {
+    const { airdropTemplate } = await import("../templates/airdrop");
     contractSrc = airdropTemplate;
     contractName = "StandardAirdrop";
     deployArgs =
       "'0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000000000000000000000000000000'";
   } else if (template === "vault") {
+    const { vaultTemplate } = await import("../templates/vault");
     contractSrc = vaultTemplate;
     contractName = "StandardVault";
     deployArgs = "['0x0000000000000000000000000000000000000001'], 1, 0";
   } else if (template === "kyberion") {
+    const { kyberionTemplate } = await import("../templates/kyberion");
     contractSrc = kyberionTemplate;
     contractName = "Kyberion";
     deployArgs = "";
@@ -242,18 +233,18 @@ describe("Deployment Template Test", function () {
     await fs.writeFile(
       path.join(projectPath, "contracts", ".gitkeep"),
       "",
-      "utf8",
+      ENCODING,
     );
     await fs.writeFile(
       path.join(projectPath, "deploy", `01_deploy.${ext}`),
       blankDeployTemplate(language),
-      "utf8",
+      ENCODING,
     );
   } else {
     await fs.writeFile(
       path.join(projectPath, "contracts", `${contractName}.sol`),
       contractSrc,
-      "utf8",
+      ENCODING,
     );
     await fs.writeFile(
       path.join(
@@ -262,7 +253,7 @@ describe("Deployment Template Test", function () {
         `01_${contractName.toLowerCase()}.${ext}`,
       ),
       getDeployScript(contractName, deployArgs, language),
-      "utf8",
+      ENCODING,
     );
   }
 
@@ -287,10 +278,10 @@ describe("Deployment Template Test", function () {
     stdio: "inherit",
   });
 
-  if (language === "typescript") {
+  if (language === TYPESCRIPT_LANG) {
     console.log("Installing development dependencies...");
     execSync(
-      "npm install --save-dev @types/node mocha chai @types/mocha @types/chai",
+      "npm install --save-dev @types/node mocha chai @types/mocha @types/chai ts-node typescript@5",
       {
         cwd: projectPath,
         stdio: "inherit",

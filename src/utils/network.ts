@@ -1,8 +1,18 @@
-import * as fs from "fs-extra";
-import * as path from "path";
 import { loadNetworks } from "./networkStorage";
 
-const SESSION_FILE = path.resolve(process.cwd(), ".cmu-session");
+const SESSION_FILE_NAME = ".cmu-session";
+const DEFAULT_NETWORK = "local";
+const LOCAL_CHAIN_ID = 1912;
+const LOCAL_URL = "http://127.0.0.1:8585";
+const TS_CONFIG_FILE = "cmu.config.ts";
+const JS_CONFIG_FILE = "cmu.config.js";
+const MODULE_FORMAT = "CommonJS";
+
+const FS_EXTRA_PKG = "fs-extra";
+const PATH_PKG = "path";
+const ETHERS_PKG = "ethers";
+const TS_NODE_PKG = "ts-node";
+const TS_COMPILER = "typescript@5";
 
 export interface NetworkConfig {
   name: string;
@@ -21,10 +31,15 @@ export interface NetworkConfig {
 export async function getDynamicNetwork(
   targetNetwork?: string,
 ): Promise<NetworkConfig> {
-  let activeNetworkName = "local";
+  const fs =
+    (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
+  const path = await import(PATH_PKG);
+  const sessionFile = path.resolve(process.cwd(), SESSION_FILE_NAME);
 
-  if (await fs.pathExists(SESSION_FILE)) {
-    const session = await fs.readJson(SESSION_FILE);
+  let activeNetworkName = DEFAULT_NETWORK;
+
+  if (await fs.pathExists(sessionFile)) {
+    const session = await fs.readJson(sessionFile);
     if (session.activeNetwork) {
       activeNetworkName = session.activeNetwork;
     }
@@ -36,13 +51,12 @@ export async function getDynamicNetwork(
   const network = networks.find((n) => n.name === networkName);
 
   if (!network) {
-    console.error(
-      `Error: Network configuration for '${networkName}' not found in saved networks.`,
+    throw new Error(
+      `Network configuration for '${networkName}' not found in saved networks.`,
     );
-    process.exit(1);
   }
 
-  const { ethers } = await import("ethers");
+  const { ethers } = await import(ETHERS_PKG);
   let chainId = 0;
 
   try {
@@ -50,7 +64,7 @@ export async function getDynamicNetwork(
     const net = await provider.getNetwork();
     chainId = Number(net.chainId);
   } catch {
-    chainId = networkName === "local" ? 1912 : 0;
+    chainId = networkName === DEFAULT_NETWORK ? LOCAL_CHAIN_ID : 0;
   }
 
   return {
@@ -71,14 +85,20 @@ export async function getDynamicNetwork(
 export async function getDeployNetwork(
   targetNetwork?: string,
 ): Promise<NetworkConfig> {
+  const fs =
+    (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
+  const path = await import(PATH_PKG);
+
   let config: any = null;
-  const tsConfigPath = path.resolve(process.cwd(), "cmu.config.ts");
-  const jsConfigPath = path.resolve(process.cwd(), "cmu.config.js");
+  const tsConfigPath = path.resolve(process.cwd(), TS_CONFIG_FILE);
+  const jsConfigPath = path.resolve(process.cwd(), JS_CONFIG_FILE);
 
   if (await fs.pathExists(tsConfigPath)) {
-    require("ts-node").register({
+    const tsNode = await import(TS_NODE_PKG);
+    tsNode.register({
       transpileOnly: true,
-      compilerOptions: { module: "CommonJS" },
+      compiler: TS_COMPILER,
+      compilerOptions: { module: MODULE_FORMAT },
     });
     const mod = require(tsConfigPath);
     config = mod.default || mod;
@@ -87,28 +107,26 @@ export async function getDeployNetwork(
   }
 
   if (!config) {
-    if (targetNetwork && targetNetwork !== "local") {
-      console.error(
-        `Error: Configuration file not found, but a specific network '${targetNetwork}' was requested for deployment.`,
+    if (targetNetwork && targetNetwork !== DEFAULT_NETWORK) {
+      throw new Error(
+        `Configuration file not found, but a specific network '${targetNetwork}' was requested for deployment.`,
       );
-      process.exit(1);
     }
     return {
-      name: "local",
-      url: "http://127.0.0.1:8585",
-      chainId: 1912,
+      name: DEFAULT_NETWORK,
+      url: LOCAL_URL,
+      chainId: LOCAL_CHAIN_ID,
       privateKey: process.env.PRIVATE_KEY,
     };
   }
 
-  const networkName = targetNetwork || config.defaultNetwork || "local";
+  const networkName = targetNetwork || config.defaultNetwork || DEFAULT_NETWORK;
   const network = config.networks?.[networkName];
 
   if (!network) {
-    console.error(
-      `Error: Static deployment network configuration for '${networkName}' not found in cmu.config.ts.`,
+    throw new Error(
+      `Static deployment network configuration for '${networkName}' not found in ${TS_CONFIG_FILE}.`,
     );
-    process.exit(1);
   }
 
   return {

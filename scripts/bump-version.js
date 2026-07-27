@@ -7,7 +7,7 @@ const MAKEFILE_PATH = path.resolve(__dirname, "../Makefile");
 const ENCODING_UTF8 = "utf8";
 
 const ARG_POSITION_BUMP_TYPE = 2;
-const ARG_POSITION_PRERELEASE = 3;
+const ARG_POSITION_CODENAME = 3;
 const VERSION_PARTS_LENGTH = 3;
 const PART_MAJOR_INDEX = 0;
 const PART_MINOR_INDEX = 1;
@@ -53,15 +53,13 @@ function writeMakefile(content) {
 }
 
 /**
- * Bumps the version string based on the given bump type and optional prerelease tag.
- * @param {string} currentVersion - The current version string.
+ * Bumps the version string based on the given bump type.
+ * @param {string} currentVersion - The current pure version string.
  * @param {string} bumpType - The type of bump (major, minor, patch).
- * @param {string} [prereleaseTag] - An optional prerelease tag.
- * @returns {string} The new version string.
+ * @returns {string} The new version string without any pre-release tags.
  */
-function calculateNewVersion(currentVersion, bumpType, prereleaseTag) {
-  const versionCore = currentVersion.split("-")[0];
-  const parts = versionCore.split(".").map(Number);
+function calculateNewVersion(currentVersion, bumpType) {
+  const parts = currentVersion.split(".").map(Number);
 
   if (parts.length !== VERSION_PARTS_LENGTH) {
     throw new Error("Invalid version format in package.json");
@@ -84,44 +82,45 @@ function calculateNewVersion(currentVersion, bumpType, prereleaseTag) {
     throw new Error("Invalid bump type. Use major, minor, or patch.");
   }
 
-  let newVersion = `${major}.${minor}.${patch}`;
-
-  if (prereleaseTag) {
-    newVersion += `-${prereleaseTag}`;
-  }
-
-  return newVersion;
+  return `${major}.${minor}.${patch}`;
 }
 
 /**
- * Updates the Linux kernel style version variables in the Makefile content.
+ * Updates the version variables in the Makefile content.
  * @param {string} makefileContent - The original Makefile content.
  * @param {string} newVersion - The new version string to set.
+ * @param {string|undefined} codename - An optional codename to set as EXTRAVERSION or CODENAME.
  * @returns {string} The updated Makefile content.
  */
-function updateMakefileVersion(makefileContent, newVersion) {
-  const versionCore = newVersion.split("-")[0];
-  const prereleaseTag = newVersion.includes("-")
-    ? newVersion.substring(versionCore.length + 1)
-    : "";
-  const parts = versionCore.split(".").map(Number);
+function updateMakefileVersion(makefileContent, newVersion, codename) {
+  const parts = newVersion.split(".").map(Number);
 
   let updated = makefileContent.replace(
     /^VERSION\s*=\s*.*$/m,
-    `VERSION = ${parts[PART_MAJOR_INDEX]}`,
+    `VERSION = ${parts[PART_MAJOR_INDEX]}`
   );
   updated = updated.replace(
     /^PATCHLEVEL\s*=\s*.*$/m,
-    `PATCHLEVEL = ${parts[PART_MINOR_INDEX]}`,
+    `PATCHLEVEL = ${parts[PART_MINOR_INDEX]}`
   );
   updated = updated.replace(
     /^SUBLEVEL\s*=\s*.*$/m,
-    `SUBLEVEL = ${parts[PART_PATCH_INDEX]}`,
+    `SUBLEVEL = ${parts[PART_PATCH_INDEX]}`
   );
-  updated = updated.replace(
-    /^EXTRAVERSION\s*=\s*.*$/m,
-    `EXTRAVERSION = ${prereleaseTag}`,
-  );
+
+  if (codename) {
+    if (/^EXTRAVERSION\s*=/m.test(updated)) {
+      updated = updated.replace(
+        /^EXTRAVERSION\s*=\s*.*$/m,
+        `EXTRAVERSION = ${codename}`
+      );
+    } else if (/^CODENAME\s*=/m.test(updated)) {
+      updated = updated.replace(
+        /^CODENAME\s*=\s*.*$/m,
+        `CODENAME = ${codename}`
+      );
+    }
+  }
 
   return updated;
 }
@@ -143,30 +142,28 @@ function runCommand(command) {
 function main() {
   const args = process.argv;
   const bumpType = args[ARG_POSITION_BUMP_TYPE];
-  const prereleaseTag = args[ARG_POSITION_PRERELEASE];
+  const codename = args[ARG_POSITION_CODENAME];
 
   if (!bumpType) {
-    console.error(
-      "Usage: node scripts/bump-version.js <major|minor|patch> [prerelease-tag]",
-    );
+    console.error("Usage: node scripts/bump-version.js <major|minor|patch> [codename]");
     process.exit(EXIT_CODE_ERROR);
   }
 
   const pkg = readPackageJson();
-  const currentVersion = pkg.version;
-  const newVersion = calculateNewVersion(
-    currentVersion,
-    bumpType,
-    prereleaseTag,
-  );
+  const currentVersion = pkg.version.split("-")[0];
+  const newVersion = calculateNewVersion(currentVersion, bumpType);
 
   console.log(`Bumping version from ${currentVersion} to ${newVersion}`);
 
   pkg.version = newVersion;
+  if (codename) {
+    pkg.codename = codename;
+  }
+  
   writePackageJson(pkg);
 
   const makefileContent = readMakefile();
-  const updatedMakefile = updateMakefileVersion(makefileContent, newVersion);
+  const updatedMakefile = updateMakefileVersion(makefileContent, newVersion, codename);
   writeMakefile(updatedMakefile);
 
   runCommand("npm install");

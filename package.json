@@ -1,12 +1,14 @@
 {
   "name": "cmu-cli",
-  "version": "1.2.3-Sagitarius",
+  "version": "1.2.4",
+  "codename": "Drako",
   "description": "Primary development toolkit for the CointMU blockchain",
   "main": "dist/index.js",
   "bin": {
     "cmu": "dist/index.js"
   },
   "scripts": {
+    "prebuild": "ts-node update-build.ts",
     "build": "tsup",
     "prepublishOnly": "npm run build",
     "prepare": "husky"
@@ -16,7 +18,7 @@
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
     "fs-extra": "^11.1.1",
-    "ganache": "^7.9.2",
+    "hardhat": "^3.11.1",
     "inquirer": "^8.2.4",
     "solc": "^0.8.36",
     "ts-node": "^10.9.2"
@@ -31,8 +33,17 @@
     "lint-staged": "^17.0.8",
     "prettier": "^3.9.6",
     "tsup": "^8.5.0",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0"
+  },
+  "overrides": {
+    "hardhat": {
+      "adm-zip": "^0.6.0"
+    },
+    "solc": {
+      "tmp": "^0.2.6"
+    },
+    "esbuild": "^0.28.1"
   },
   "lint-staged": {
     "src/**/*.ts": [

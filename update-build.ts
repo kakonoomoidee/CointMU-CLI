@@ -1,8 +1,9 @@
-const fs = require("fs");
-const path = require("path");
+import * as fs from "fs";
+import * as path from "path";
 
 /**
  * Generates a compact 8-character hexadecimal build identifier.
+ *
  * @returns {string} An 8-character lowercase hex build ID.
  */
 function generateBuildId(): string {
@@ -16,10 +17,11 @@ function generateBuildId(): string {
 /**
  * Generates a new build ID, saves it to build-info.json,
  * and updates the BUILD variable in the Makefile.
+ *
  * @returns {void}
  */
 function updateBuildId(): void {
-  const rootDir = __dirname;
+  const rootDir = process.cwd();
   const jsonPath = path.join(rootDir, "build-info.json");
   const makefilePath = path.join(rootDir, "Makefile");
   const buildId = generateBuildId();

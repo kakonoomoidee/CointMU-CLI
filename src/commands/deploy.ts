@@ -1,5 +1,18 @@
 import { Command } from "commander";
-import * as path from "path";
+
+const EXIT_SUCCESS = 0;
+const EXIT_FAILURE = 1;
+const MIN_KEY_LENGTH = 10;
+const MASK_START = 5;
+const MASK_END = 4;
+const NETWORK_TIMEOUT_MS = 3000;
+
+interface DeployOptions {
+  config?: boolean;
+  ping?: boolean;
+  network?: string;
+  verbose?: boolean;
+}
 
 /**
  * Executes a deployment script using child_process.execSync.
@@ -12,6 +25,8 @@ function runDeployScript(
   env: Record<string, string | undefined>,
 ): void {
   const { execFileSync } = require("child_process");
+  const path = require("path");
+
   const ext = path.extname(scriptPath);
   const isWin = process.platform === "win32";
   const runner = ext === ".ts" ? "npx" : "node";
@@ -34,33 +49,136 @@ function runDeployScript(
  * @returns {string} The masked private key.
  */
 function maskPrivateKey(pk: string): string {
-  if (pk.length < 10) return "***";
-  return `${pk.substring(0, 5)}...${pk.substring(pk.length - 4)}`;
+  if (pk.length < MIN_KEY_LENGTH) return "***";
+  return `${pk.substring(0, MASK_START)}...${pk.substring(pk.length - MASK_END)}`;
 }
 
 /**
  * Pings the given RPC URL to verify network connectivity.
  * @param {string} rpcUrl - The RPC URL to test.
- * @returns {Promise<void>} Resolves if connected, exits process if unreachable.
+ * @returns {Promise<void>} Resolves if connected, throws Error if unreachable.
  */
 async function pingNetwork(rpcUrl: string): Promise<void> {
-  const { ethers } = require("ethers");
+  const { ethers } = await import("ethers");
   console.log(`Pinging RPC URL: ${rpcUrl}...`);
   try {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const networkData: any = await Promise.race([
       provider.getNetwork(),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 3000),
+        setTimeout(() => reject(new Error("Timeout")), NETWORK_TIMEOUT_MS),
       ),
     ]);
     console.log(
       `[SUCCESS] Connected to network '${networkData.name}' (Chain ID: ${networkData.chainId})`,
     );
-    process.exit(0);
   } catch {
-    console.error(`[ERROR] Unreachable RPC URL: ${rpcUrl}`);
-    process.exit(1);
+    throw new Error(`Unreachable RPC URL: ${rpcUrl}`);
+  }
+}
+
+/**
+ * Executes the deployment process.
+ * @param {DeployOptions} options - CLI deployment options.
+ * @returns {Promise<void>} Resolves when all scripts are deployed.
+ */
+async function runDeploy(options: DeployOptions): Promise<void> {
+  try {
+    const path = await import("path");
+    const fs = (await import("fs-extra")).default || (await import("fs-extra"));
+    require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
+
+    console.log("Triggering automated contract compilation...");
+    const { runCompile } = await import("./compile");
+    await runCompile();
+
+    const deployDir = path.resolve(process.cwd(), "deploy");
+
+    if (!(await fs.pathExists(deployDir))) {
+      throw new Error(
+        `'deploy' directory not found at ${deployDir}.\nPlease run this command from the root of your CointMU project.`,
+      );
+    }
+
+    const { getDeployNetwork } = await import("../utils/network");
+    const network = await getDeployNetwork(options.network);
+
+    if (options.ping) {
+      await pingNetwork(network.url);
+      process.exit(EXIT_SUCCESS);
+    }
+
+    const privateKey = network.privateKey;
+
+    if (process.env.PRIVATE_KEY) {
+      delete process.env.PRIVATE_KEY;
+    }
+
+    if (!privateKey) {
+      throw new Error(
+        "PRIVATE_KEY is not defined in the configuration or .env file.",
+      );
+    }
+
+    const { ethers } = await import("ethers");
+    let wallet;
+    try {
+      wallet = new ethers.Wallet(privateKey);
+    } catch {
+      throw new Error("Invalid PRIVATE_KEY provided.");
+    }
+
+    console.log(`\n--- Deployment Metadata ---`);
+    console.log(`Network Name  : ${network.name}`);
+    console.log(`RPC URL       : ${network.url}`);
+    console.log(`Chain ID      : ${network.chainId}`);
+    console.log(`Deployer      : ${wallet.address}`);
+    if (options.config) {
+      console.log(`Private Key   : ${maskPrivateKey(privateKey)}`);
+    }
+    console.log(`---------------------------\n`);
+
+    if (options.config) {
+      process.exit(EXIT_SUCCESS);
+    }
+
+    const files: string[] = await fs.readdir(deployDir);
+    const scripts = files
+      .filter((f) => f.endsWith(".ts") || f.endsWith(".js"))
+      .sort((a, b) => a.localeCompare(b));
+
+    if (scripts.length === 0) {
+      console.log("No deployment scripts found in deploy/ directory.");
+      return;
+    }
+
+    console.log(
+      `Found ${scripts.length} deployment script(s). Starting sequential deployment...`,
+    );
+
+    const injectedEnv = {
+      ...process.env,
+      CMU_RPC_URL: network.url,
+      CMU_CHAIN_ID: String(network.chainId),
+      PRIVATE_KEY: privateKey,
+    };
+
+    for (const script of scripts) {
+      const fullPath = path.join(deployDir, script);
+      runDeployScript(fullPath, injectedEnv);
+    }
+
+    console.log("\nAll deployment scripts executed successfully.");
+  } catch (error) {
+    console.error("\n\x1b[31m[!] Deployment failed:\x1b[0m");
+
+    if (options.verbose) {
+      console.error(error);
+    } else {
+      console.error(error instanceof Error ? error.message : String(error));
+    }
+
+    process.exit(EXIT_FAILURE);
   }
 }
 
@@ -75,101 +193,5 @@ export const deployCommand = new Command("deploy")
     "Ping the configured RPC network to check connectivity and exit",
   )
   .option("-n, --network <name>", "Specify the network to deploy to")
-  .action(
-    async (options: { config?: boolean; ping?: boolean; network?: string }) => {
-      try {
-        console.log("Triggering automated contract compilation...");
-        const { runCompile } = await import("./compile");
-        await runCompile();
-
-        const fs = require("fs-extra");
-        const deployDir = path.resolve(process.cwd(), "deploy");
-
-        if (!(await fs.pathExists(deployDir))) {
-          console.error(`Error: 'deploy' directory not found at ${deployDir}.`);
-          console.error(
-            `Please run this command from the root of your CointMU project.`,
-          );
-          process.exit(1);
-        }
-
-        require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
-
-        const { getDeployNetwork } = await import("../utils/network");
-        const network = await getDeployNetwork(options.network);
-
-        if (options.ping) {
-          await pingNetwork(network.url);
-        }
-
-        const privateKey = network.privateKey;
-
-        // Dereference from parent memory to prevent leakage
-        if (process.env.PRIVATE_KEY) {
-          delete process.env.PRIVATE_KEY;
-        }
-
-        if (!privateKey) {
-          console.error(
-            "Error: PRIVATE_KEY is not defined in the configuration or .env file.",
-          );
-          process.exit(1);
-        }
-
-        const { ethers } = require("ethers");
-        let wallet;
-        try {
-          wallet = new ethers.Wallet(privateKey);
-        } catch {
-          console.error("Error: Invalid PRIVATE_KEY provided.");
-          process.exit(1);
-        }
-
-        console.log(`\n--- Deployment Metadata ---`);
-        console.log(`Network Name  : ${network.name}`);
-        console.log(`RPC URL       : ${network.url}`);
-        console.log(`Chain ID      : ${network.chainId}`);
-        console.log(`Deployer      : ${wallet.address}`);
-        if (options.config) {
-          console.log(`Private Key   : ${maskPrivateKey(privateKey)}`);
-        }
-        console.log(`---------------------------\n`);
-
-        if (options.config) {
-          process.exit(0);
-        }
-
-        const files: string[] = await fs.readdir(deployDir);
-        const scripts = files
-          .filter((f) => f.endsWith(".ts") || f.endsWith(".js"))
-          .sort((a, b) => a.localeCompare(b)); // Sorts 01_... before 02_...
-
-        if (scripts.length === 0) {
-          console.log("No deployment scripts found in deploy/ directory.");
-          return;
-        }
-
-        console.log(
-          `Found ${scripts.length} deployment script(s). Starting sequential deployment...`,
-        );
-
-        const injectedEnv = {
-          ...process.env,
-          CMU_RPC_URL: network.url,
-          CMU_CHAIN_ID: String(network.chainId),
-          PRIVATE_KEY: privateKey,
-        };
-
-        for (const script of scripts) {
-          const fullPath = path.join(deployDir, script);
-          runDeployScript(fullPath, injectedEnv);
-        }
-
-        console.log("\nAll deployment scripts executed successfully.");
-      } catch (error) {
-        console.error("\n[!] Deployment failed:");
-        console.error(error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
-    },
-  );
+  .option("-v, --verbose", "Enable verbose logging for debugging")
+  .action(runDeploy);

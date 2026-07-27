@@ -1,5 +1,11 @@
-import * as fs from "fs-extra";
-import * as path from "path";
+const TYPESCRIPT_LANG = "typescript";
+const TS_CONFIG_FILE = "cmu.config.ts";
+const JS_CONFIG_FILE = "cmu.config.js";
+const ENV_EXAMPLE_FILE = ".env.example";
+const GITIGNORE_FILE = ".gitignore";
+const ENCODING = "utf8";
+const FS_EXTRA_PKG = "fs-extra";
+const PATH_PKG = "path";
 
 const cmuConfigJs = `module.exports = {
   defaultNetwork: "local",
@@ -82,25 +88,36 @@ export async function generateConfigFiles(
   projectPath: string,
   language: string,
 ): Promise<void> {
-  const isTypeScript = language === "typescript";
-  const configFileName = isTypeScript ? "cmu.config.ts" : "cmu.config.js";
-  const configContent = isTypeScript ? cmuConfigTs : cmuConfigJs;
+  try {
+    const fs =
+      (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
+    const path = await import(PATH_PKG);
 
-  await fs.writeFile(
-    path.join(projectPath, configFileName),
-    configContent,
-    "utf8",
-  );
+    const isTypeScript = language === TYPESCRIPT_LANG;
+    const configFileName = isTypeScript ? TS_CONFIG_FILE : JS_CONFIG_FILE;
+    const configContent = isTypeScript ? cmuConfigTs : cmuConfigJs;
 
-  await fs.writeFile(
-    path.join(projectPath, ".env.example"),
-    envExampleTemplate,
-    "utf8",
-  );
+    await fs.writeFile(
+      path.join(projectPath, configFileName),
+      configContent,
+      ENCODING,
+    );
 
-  await fs.writeFile(
-    path.join(projectPath, ".gitignore"),
-    gitignoreTemplate,
-    "utf8",
-  );
+    await fs.writeFile(
+      path.join(projectPath, ENV_EXAMPLE_FILE),
+      envExampleTemplate,
+      ENCODING,
+    );
+
+    await fs.writeFile(
+      path.join(projectPath, GITIGNORE_FILE),
+      gitignoreTemplate,
+      ENCODING,
+    );
+  } catch (error) {
+    throw new Error(
+      `Failed to generate config files: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
 }
