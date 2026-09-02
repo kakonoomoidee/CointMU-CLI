@@ -3,6 +3,12 @@ import { Command } from "commander";
 const EXIT_FAILURE = 1;
 const PACKAGE_NAME = "cointmu-cli";
 
+// Accepts semver versions, semver ranges, and npm dist-tags (e.g. "latest").
+// Rejects anything carrying shell metacharacters ($()  ` ; | & ( ) etc.) or a
+// leading "-" (npm argument injection). This is a defense-in-depth layer on top
+// of the shell-free execFileSync calls below.
+const VALID_TO = /^[0-9A-Za-z*~^><=][0-9A-Za-z .+~^><=*-]{0,99}$/;
+
 interface UpdateOptions {
   to?: string;
   verbose?: boolean;
@@ -26,18 +32,26 @@ export async function resolveCurrentVersion(): Promise<string> {
 
 /**
  * Resolves a target version from the npm registry.
- * @param {string} [requested] - A specific semver to pin, or undefined for the latest release.
+ * @param {string} [requested] - A specific semver/range to pin, or undefined for the latest release.
  * @returns {Promise<string>} The resolved version string published on the registry.
- * @throws {Error} If the requested version is not published.
+ * @throws {Error} If `requested` is not a valid version/range/dist-tag, or is not published.
  */
 export async function resolveTargetVersion(
   requested?: string,
 ): Promise<string> {
-  const { execSync } = await import("child_process");
+  if (requested !== undefined && !VALID_TO.test(requested)) {
+    throw new Error(
+      `Invalid --to value "${requested}". Expected a semver version, range, or npm dist-tag (e.g. "1.3.2", ">=1.3.0", "latest").`,
+    );
+  }
+
+  const { execFileSync } = await import("child_process");
   const spec = requested ? `${PACKAGE_NAME}@${requested}` : PACKAGE_NAME;
 
   try {
-    const raw = execSync(`npm view ${spec} version`, { stdio: "pipe" })
+    const raw = execFileSync("npm", ["view", spec, "version"], {
+      stdio: "pipe",
+    })
       .toString()
       .trim();
 
@@ -67,9 +81,9 @@ export async function resolveTargetVersion(
 }
 
 /**
- * Builds the global install command for a specific published version.
+ * Builds the human-readable global install command for a specific published version.
  * @param {string} version - The exact version to install.
- * @returns {string} The npm command string.
+ * @returns {string} The npm command string (for display only; execution uses execFileSync).
  */
 export function buildInstallCommand(version: string): string {
   return `npm install -g ${PACKAGE_NAME}@${version}`;
@@ -82,7 +96,7 @@ export function buildInstallCommand(version: string): string {
  */
 async function runUpdate(options: UpdateOptions = {}): Promise<void> {
   try {
-    const { execSync } = await import("child_process");
+    const { execFileSync } = await import("child_process");
 
     const current = await resolveCurrentVersion();
     console.log("Checking the npm registry for the target version...");
@@ -96,9 +110,14 @@ async function runUpdate(options: UpdateOptions = {}): Promise<void> {
       return;
     }
 
-    const command = buildInstallCommand(target);
-    console.log(`\nExecuting: ${command}`);
-    execSync(command, { stdio: "inherit" });
+    console.log(`\nExecuting: ${buildInstallCommand(target)}`);
+    // ponytail: execFileSync (no shell) blocks command injection; win32 needs
+    // "npm.cmd". If Node ever refuses .cmd via execFile, switch to a resolved
+    // npm-cli.js path invoked through process.execPath.
+    const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+    execFileSync(npm, ["install", "-g", `${PACKAGE_NAME}@${target}`], {
+      stdio: "inherit",
+    });
 
     console.log("\nUpdate completed successfully!");
   } catch (error) {
