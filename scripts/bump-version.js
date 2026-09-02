@@ -6,8 +6,8 @@ const PACKAGE_JSON_PATH = path.resolve(__dirname, "../package.json");
 const MAKEFILE_PATH = path.resolve(__dirname, "../Makefile");
 const ENCODING_UTF8 = "utf8";
 
-const ARG_POSITION_BUMP_TYPE = 2;
-const ARG_POSITION_CODENAME = 3;
+const ARG_POSITION_SUBCOMMAND = 2;
+const ARG_POSITION_VALUE = 3;
 const VERSION_PARTS_LENGTH = 3;
 const PART_MAJOR_INDEX = 0;
 const PART_MINOR_INDEX = 1;
@@ -15,6 +15,12 @@ const PART_PATCH_INDEX = 2;
 const INDENT_SPACES = 2;
 
 const EXIT_CODE_ERROR = 1;
+
+const USAGE = [
+  "Usage:",
+  "  node scripts/bump-version.js bump <major|minor|patch>   Bump version only",
+  "  node scripts/bump-version.js codename <name>            Update codename only",
+].join("\n");
 
 /**
  * Reads and parses the package.json file.
@@ -86,13 +92,12 @@ function calculateNewVersion(currentVersion, bumpType) {
 }
 
 /**
- * Updates the version variables in the Makefile content.
+ * Updates only the version number variables in the Makefile content.
  * @param {string} makefileContent - The original Makefile content.
  * @param {string} newVersion - The new version string to set.
- * @param {string|undefined} codename - An optional codename to set as EXTRAVERSION or CODENAME.
  * @returns {string} The updated Makefile content.
  */
-function updateMakefileVersion(makefileContent, newVersion, codename) {
+function updateMakefileVersionNumbers(makefileContent, newVersion) {
   const parts = newVersion.split(".").map(Number);
 
   let updated = makefileContent.replace(
@@ -108,21 +113,20 @@ function updateMakefileVersion(makefileContent, newVersion, codename) {
     `SUBLEVEL = ${parts[PART_PATCH_INDEX]}`
   );
 
-  if (codename) {
-    if (/^EXTRAVERSION\s*=/m.test(updated)) {
-      updated = updated.replace(
-        /^EXTRAVERSION\s*=\s*.*$/m,
-        `EXTRAVERSION = ${codename}`
-      );
-    } else if (/^CODENAME\s*=/m.test(updated)) {
-      updated = updated.replace(
-        /^CODENAME\s*=\s*.*$/m,
-        `CODENAME = ${codename}`
-      );
-    }
-  }
-
   return updated;
+}
+
+/**
+ * Updates only the CODENAME variable in the Makefile content.
+ * @param {string} makefileContent - The original Makefile content.
+ * @param {string} codename - The codename to set.
+ * @returns {string} The updated Makefile content.
+ */
+function updateMakefileCodename(makefileContent, codename) {
+  return makefileContent.replace(
+    /^CODENAME\s*=\s*.*$/m,
+    `CODENAME = ${codename}`
+  );
 }
 
 /**
@@ -136,16 +140,13 @@ function runCommand(command) {
 }
 
 /**
- * Main execution flow for the bump version script.
+ * Runs the "bump" sub-command: version only, no codename.
+ * @param {string} bumpType - major, minor, or patch.
  * @returns {void}
  */
-function main() {
-  const args = process.argv;
-  const bumpType = args[ARG_POSITION_BUMP_TYPE];
-  const codename = args[ARG_POSITION_CODENAME];
-
+function runBump(bumpType) {
   if (!bumpType) {
-    console.error("Usage: node scripts/bump-version.js <major|minor|patch> [codename]");
+    console.error(USAGE);
     process.exit(EXIT_CODE_ERROR);
   }
 
@@ -156,15 +157,9 @@ function main() {
   console.log(`Bumping version from ${currentVersion} to ${newVersion}`);
 
   pkg.version = newVersion;
-  if (codename) {
-    pkg.codename = codename;
-  }
-  
   writePackageJson(pkg);
 
-  const makefileContent = readMakefile();
-  const updatedMakefile = updateMakefileVersion(makefileContent, newVersion, codename);
-  writeMakefile(updatedMakefile);
+  writeMakefile(updateMakefileVersionNumbers(readMakefile(), newVersion));
 
   runCommand("npm install");
   runCommand("git add .");
@@ -174,6 +169,51 @@ function main() {
   runCommand("git push origin --tags");
 
   console.log(`Successfully released version ${newVersion}`);
+}
+
+/**
+ * Runs the "codename" sub-command: codename only, no version bump, no tag.
+ * @param {string} codename - The new codename.
+ * @returns {void}
+ */
+function runCodename(codename) {
+  if (!codename) {
+    console.error(USAGE);
+    process.exit(EXIT_CODE_ERROR);
+  }
+
+  const pkg = readPackageJson();
+  console.log(`Updating codename from ${pkg.codename} to ${codename}`);
+
+  pkg.codename = codename;
+  writePackageJson(pkg);
+
+  writeMakefile(updateMakefileCodename(readMakefile(), codename));
+
+  runCommand("git add .");
+  runCommand(`git commit -m "chore: rename codename to ${codename}"`);
+  runCommand("git push origin HEAD");
+
+  console.log(`Successfully renamed codename to ${codename}`);
+}
+
+/**
+ * Main execution flow for the bump version script.
+ * @returns {void}
+ */
+function main() {
+  const args = process.argv;
+  const subcommand = args[ARG_POSITION_SUBCOMMAND];
+  const value = args[ARG_POSITION_VALUE];
+
+  if (subcommand === "bump") {
+    runBump(value);
+  } else if (subcommand === "codename") {
+    runCodename(value);
+  } else {
+    console.error(USAGE);
+    process.exit(EXIT_CODE_ERROR);
+  }
 }
 
 main();
