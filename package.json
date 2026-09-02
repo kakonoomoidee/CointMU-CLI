@@ -34,6 +34,7 @@
   "scripts": {
     "prebuild": "ts-node update-build.ts",
     "build": "tsup",
+    "test": "vitest run",
     "prepublishOnly": "npm run build",
     "prepare": "husky"
   },
@@ -58,7 +59,8 @@
     "prettier": "^3.9.6",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "typescript-eslint": "^8.68.0"
+    "typescript-eslint": "^8.68.0",
+    "vitest": "^3.0.0"
   },
   "overrides": {
     "hardhat": {

@@ -1,4 +1,5 @@
 import { loadNetworks } from "./networkStorage";
+import { resolvePrivateKey } from "./session";
 
 const SESSION_FILE_NAME = ".cmu-session";
 const DEFAULT_NETWORK = "local";
@@ -24,6 +25,11 @@ export interface NetworkConfig {
 /**
  * Resolves the dynamic network configuration using .cmu-networks.json
  * and the active CLI session. Used for wallet, mining, and node connections.
+ *
+ * These callers only need url/chainId/name, so the private key is NOT resolved
+ * here: `privateKey` is populated from PRIVATE_KEY when set, but an encrypted
+ * .cmu-session is never touched and no password prompt is triggered. Anything
+ * that actually needs to sign uses getDeployNetwork().
  *
  * @param {string} [targetNetwork] - An optional override network name.
  * @returns {Promise<NetworkConfig>} The dynamic network configuration.
@@ -84,6 +90,7 @@ export async function getDynamicNetwork(
  */
 export async function getDeployNetwork(
   targetNetwork?: string,
+  options: { noPrompt?: boolean } = {},
 ): Promise<NetworkConfig> {
   const fs =
     (await import(FS_EXTRA_PKG)).default || (await import(FS_EXTRA_PKG));
@@ -116,7 +123,7 @@ export async function getDeployNetwork(
       name: DEFAULT_NETWORK,
       url: LOCAL_URL,
       chainId: LOCAL_CHAIN_ID,
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: await resolvePrivateKey({ prompt: !options.noPrompt }),
     };
   }
 
@@ -133,6 +140,8 @@ export async function getDeployNetwork(
     name: networkName,
     url: network.url,
     chainId: network.chainId,
-    privateKey: config.wallet?.privateKey || process.env.PRIVATE_KEY,
+    privateKey:
+      config.wallet?.privateKey ||
+      (await resolvePrivateKey({ prompt: !options.noPrompt })),
   };
 }
