@@ -1,13 +1,7 @@
 import { Command } from "commander";
 
 const EXIT_FAILURE = 1;
-const ALGORITHM = "aes-256-cbc";
 const SESSION_FILE_NAME = ".cmu-session";
-const SALT_BYTES = 16;
-const PBKDF2_ITERATIONS = 100000;
-const KEY_LENGTH = 32;
-const DIGEST = "sha256";
-const IV_BYTES = 16;
 const MIN_PASSWORD_LENGTH = 6;
 const JSON_SPACES = 2;
 
@@ -71,8 +65,8 @@ async function runWalletLogin(
   try {
     const inquirer = (await import("inquirer")).default;
     const { ethers } = await import("ethers");
-    const crypto = await import("crypto");
     const fs = (await import("fs-extra")).default || (await import("fs-extra"));
+    const { encryptSessionKey } = await import("../utils/session");
 
     const answers = await inquirer.prompt([
       {
@@ -102,32 +96,19 @@ async function runWalletLogin(
 
     const wallet = new ethers.Wallet(answers.privateKey);
 
-    const salt = crypto.randomBytes(SALT_BYTES);
-    const key = crypto.pbkdf2Sync(
-      answers.password,
-      salt,
-      PBKDF2_ITERATIONS,
-      KEY_LENGTH,
-      DIGEST,
-    );
-    const iv = crypto.randomBytes(IV_BYTES);
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-
-    let encryptedKey = cipher.update(answers.privateKey, "utf8", "hex");
-    encryptedKey += cipher.final("hex");
-
     const sessionData = {
       address: wallet.address,
       activeNetwork: "local",
-      encryptedKey,
-      salt: salt.toString("hex"),
-      iv: iv.toString("hex"),
+      ...encryptSessionKey(answers.password, answers.privateKey),
     };
 
     const sessionFile = getSessionFilePath();
     await fs.writeJson(sessionFile, sessionData, { spaces: JSON_SPACES });
     console.log("Wallet session encrypted and saved successfully!");
     console.log(`Logged in as: ${wallet.address}`);
+    console.log(
+      "This encrypted key will now be used automatically by 'deploy' when no PRIVATE_KEY env var is set.",
+    );
   } catch (error) {
     console.error("\n\x1b[31m[!] Login failed:\x1b[0m");
     if (options.verbose) {

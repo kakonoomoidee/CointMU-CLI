@@ -101,7 +101,9 @@ async function runDeploy(options: DeployOptions): Promise<void> {
     }
 
     const { getDeployNetwork } = await import("../utils/network");
-    const network = await getDeployNetwork(options.network);
+    const network = await getDeployNetwork(options.network, {
+      noPrompt: options.config || options.ping,
+    });
 
     if (options.ping) {
       await pingNetwork(network.url);
