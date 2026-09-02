@@ -1,12 +1,36 @@
 {
-  "name": "cmu-cli",
+  "name": "cointmu-cli",
   "version": "1.3.0",
   "codename": "Griffin",
   "description": "Primary development toolkit for the CointMU blockchain",
+  "keywords": [
+    "cointmu",
+    "cli",
+    "blockchain",
+    "solidity",
+    "hardhat",
+    "web3"
+  ],
+  "homepage": "https://github.com/kakonoomoidee/CointMU-CLI#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kakonoomoidee/CointMU-CLI.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kakonoomoidee/CointMU-CLI/issues"
+  },
+  "author": "Rizki Ramadan",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "main": "dist/index.js",
   "bin": {
     "cmu": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prebuild": "ts-node update-build.ts",
     "build": "tsup",
