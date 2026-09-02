@@ -48,7 +48,7 @@ function runDeployScript(
  * @param {string} pk - The private key to mask.
  * @returns {string} The masked private key.
  */
-function maskPrivateKey(pk: string): string {
+export function maskPrivateKey(pk: string): string {
   if (pk.length < MIN_KEY_LENGTH) return "***";
   return `${pk.substring(0, MASK_START)}...${pk.substring(pk.length - MASK_END)}`;
 }
@@ -58,7 +58,7 @@ function maskPrivateKey(pk: string): string {
  * @param {string} rpcUrl - The RPC URL to test.
  * @returns {Promise<void>} Resolves if connected, throws Error if unreachable.
  */
-async function pingNetwork(rpcUrl: string): Promise<void> {
+export async function pingNetwork(rpcUrl: string): Promise<void> {
   const { ethers } = await import("ethers");
   console.log(`Pinging RPC URL: ${rpcUrl}...`);
   try {
