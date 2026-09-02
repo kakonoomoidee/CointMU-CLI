@@ -1,7 +1,6 @@
 import { Command } from "commander";
 
 const EXIT_FAILURE = 1;
-const JSON_SPACES = 2;
 const SESSION_FILE_NAME = ".cmu-session";
 
 /**
@@ -161,6 +160,7 @@ async function runNetworkManage(options: {
     const fs = (await import("fs-extra")).default || (await import("fs-extra"));
     const { loadNetworks, saveNetwork, deleteNetwork } =
       await import("../utils/networkStorage");
+    const { writeSessionFile } = await import("../utils/session");
     const sessionFile = getSessionFilePath();
 
     if (options.save) {
@@ -211,7 +211,7 @@ async function runNetworkManage(options: {
       if (await fs.pathExists(sessionFile)) {
         const session = await fs.readJson(sessionFile);
         session.activeNetwork = options.use;
-        await fs.writeJson(sessionFile, session, { spaces: JSON_SPACES });
+        await writeSessionFile(sessionFile, session);
         console.log(`Successfully switched active network to: ${network.name}`);
       } else {
         throw new Error(

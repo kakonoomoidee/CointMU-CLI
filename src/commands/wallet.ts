@@ -2,8 +2,6 @@ import { Command } from "commander";
 
 const EXIT_FAILURE = 1;
 const SESSION_FILE_NAME = ".cmu-session";
-const MIN_PASSWORD_LENGTH = 6;
-const JSON_SPACES = 2;
 
 /**
  * Retrieves the session file path lazily.
@@ -65,8 +63,8 @@ async function runWalletLogin(
   try {
     const inquirer = (await import("inquirer")).default;
     const { ethers } = await import("ethers");
-    const fs = (await import("fs-extra")).default || (await import("fs-extra"));
-    const { encryptSessionKey } = await import("../utils/session");
+    const { encryptSessionKey, validatePasswordStrength, writeSessionFile } =
+      await import("../utils/session");
 
     const answers = await inquirer.prompt([
       {
@@ -88,9 +86,7 @@ async function runWalletLogin(
         name: "password",
         message: "Create a session password to encrypt your key:",
         mask: "*",
-        validate: (input: string) =>
-          input.length >= MIN_PASSWORD_LENGTH ||
-          `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+        validate: validatePasswordStrength,
       },
     ]);
 
@@ -103,7 +99,7 @@ async function runWalletLogin(
     };
 
     const sessionFile = getSessionFilePath();
-    await fs.writeJson(sessionFile, sessionData, { spaces: JSON_SPACES });
+    await writeSessionFile(sessionFile, sessionData);
     console.log("Wallet session encrypted and saved successfully!");
     console.log(`Logged in as: ${wallet.address}`);
     console.log(
