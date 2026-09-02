@@ -10,11 +10,27 @@ Built beautifully with **TypeScript** and packing **Vite-like** interactive prom
 
 ### 🌍 Global Installation via NPM
 
-To install the `cmu-cli` package globally so you can use the magic `cmu` command from anywhere, run:
+To install the `cointmu-cli` package globally so you can use the magic `cmu` command from anywhere, run:
 
 ```bash
-npm install -g cmu-cli
+npm install -g cointmu-cli
 ```
+
+### ⬆️ Updating
+
+To upgrade an existing global install to the latest published release:
+
+```bash
+cmu update
+```
+
+To pin a specific published version instead of the latest:
+
+```bash
+cmu update --to 1.3.1
+```
+
+`cmu update` installs from the npm registry, so it always matches what a fresh `npm install -g cointmu-cli` would give you.
 
 ### 💻 Local Development Setup (NPM)
 
@@ -120,7 +136,7 @@ Commands:
     --delete <name>           Delete a saved network
     info                      Display the active network configuration
     ping [name]               Ping a network to check connectivity and latency
-  update [options]            Updates the CointMU CLI to the latest version directly from GitHub
+  update [options]            Updates the CointMU CLI to the latest release from the npm registry
   help [command]              display help for command
 ```
 
