@@ -11,24 +11,32 @@ const DEFAULT_EVM_VERSION = "paris";
  * @param {string} importPath - The path of the imported Solidity file.
  * @returns {{ contents: string } | { error: string }} An object containing the file contents or an error message.
  */
-function findImports(
+export function findImports(
   importPath: string,
 ): { contents: string } | { error: string } {
   try {
     const fs = require("fs");
     const path = require("path");
 
+    // True when `target` is strictly inside `root` (not root itself, not a sibling
+    // whose name merely shares a string prefix, not an escape via "..").
+    const isContained = (root: string, target: string): boolean => {
+      const rel = path.relative(root, target);
+      return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
+    };
+
     const cwd = process.cwd();
     const localPath = path.resolve(cwd, importPath);
 
     // Ensure the resolved path remains within the current working directory
-    if (localPath.startsWith(cwd) && fs.existsSync(localPath)) {
+    if (isContained(cwd, localPath) && fs.existsSync(localPath)) {
       return { contents: fs.readFileSync(localPath, "utf8") };
     }
 
-    const nodeModulesPath = path.resolve(cwd, "node_modules", importPath);
+    const nodeModulesRoot = path.resolve(cwd, "node_modules");
+    const nodeModulesPath = path.resolve(nodeModulesRoot, importPath);
     if (
-      nodeModulesPath.startsWith(path.resolve(cwd, "node_modules")) &&
+      isContained(nodeModulesRoot, nodeModulesPath) &&
       fs.existsSync(nodeModulesPath)
     ) {
       return { contents: fs.readFileSync(nodeModulesPath, "utf8") };
