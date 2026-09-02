@@ -4,9 +4,9 @@
 
 VERSION = 1
 PATCHLEVEL = 3
-SUBLEVEL = 1
-CODENAME = Phoenix
-BUILD = 7cc0a5e1
+SUBLEVEL = 2
+CODENAME = Kitsune
+BUILD = 840cd072
 
 .PHONY: help dev build install-global clean
 
