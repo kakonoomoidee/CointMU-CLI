@@ -6,8 +6,9 @@ const PACKAGE_JSON_PATH = path.resolve(__dirname, "../package.json");
 const MAKEFILE_PATH = path.resolve(__dirname, "../Makefile");
 const ENCODING_UTF8 = "utf8";
 
-const ARG_POSITION_SUBCOMMAND = 2;
-const ARG_POSITION_VALUE = 3;
+const ARG_POSITION_BUMP_TYPE = 2;
+const ARG_POSITION_CODENAME = 3;
+const ARG_POSITION_PRERELEASE = 4;
 const VERSION_PARTS_LENGTH = 3;
 const PART_MAJOR_INDEX = 0;
 const PART_MINOR_INDEX = 1;
@@ -15,12 +16,6 @@ const PART_PATCH_INDEX = 2;
 const INDENT_SPACES = 2;
 
 const EXIT_CODE_ERROR = 1;
-
-const USAGE = [
-  "Usage:",
-  "  node scripts/bump-version.js bump <major|minor|patch>   Bump version only",
-  "  node scripts/bump-version.js codename <name>            Update codename only",
-].join("\n");
 
 /**
  * Reads and parses the package.json file.
@@ -59,13 +54,15 @@ function writeMakefile(content) {
 }
 
 /**
- * Bumps the version string based on the given bump type.
- * @param {string} currentVersion - The current pure version string.
+ * Bumps the version string based on the given bump type and optional prerelease tag.
+ * @param {string} currentVersion - The current version string.
  * @param {string} bumpType - The type of bump (major, minor, patch).
- * @returns {string} The new version string without any pre-release tags.
+ * @param {string} [prereleaseTag] - An optional prerelease tag.
+ * @returns {string} The new version string.
  */
-function calculateNewVersion(currentVersion, bumpType) {
-  const parts = currentVersion.split(".").map(Number);
+function calculateNewVersion(currentVersion, bumpType, prereleaseTag) {
+  const versionCore = currentVersion.split("-")[0];
+  const parts = versionCore.split(".").map(Number);
 
   if (parts.length !== VERSION_PARTS_LENGTH) {
     throw new Error("Invalid version format in package.json");
@@ -88,45 +85,41 @@ function calculateNewVersion(currentVersion, bumpType) {
     throw new Error("Invalid bump type. Use major, minor, or patch.");
   }
 
-  return `${major}.${minor}.${patch}`;
+  let newVersion = `${major}.${minor}.${patch}`;
+
+  if (prereleaseTag) {
+    newVersion += `-${prereleaseTag}`;
+  }
+
+  return newVersion;
 }
 
 /**
- * Updates only the version number variables in the Makefile content.
+ * Updates the Linux kernel style version variables in the Makefile content.
  * @param {string} makefileContent - The original Makefile content.
  * @param {string} newVersion - The new version string to set.
+ * @param {string} codename - The codename string.
  * @returns {string} The updated Makefile content.
  */
-function updateMakefileVersionNumbers(makefileContent, newVersion) {
-  const parts = newVersion.split(".").map(Number);
+function updateMakefileVersion(makefileContent, newVersion, codename) {
+  const versionCore = newVersion.split("-")[0];
+  const parts = versionCore.split(".").map(Number);
 
   let updated = makefileContent.replace(
     /^VERSION\s*=\s*.*$/m,
-    `VERSION = ${parts[PART_MAJOR_INDEX]}`
+    `VERSION = ${parts[PART_MAJOR_INDEX]}`,
   );
   updated = updated.replace(
     /^PATCHLEVEL\s*=\s*.*$/m,
-    `PATCHLEVEL = ${parts[PART_MINOR_INDEX]}`
+    `PATCHLEVEL = ${parts[PART_MINOR_INDEX]}`,
   );
   updated = updated.replace(
     /^SUBLEVEL\s*=\s*.*$/m,
-    `SUBLEVEL = ${parts[PART_PATCH_INDEX]}`
+    `SUBLEVEL = ${parts[PART_PATCH_INDEX]}`,
   );
+  updated = updated.replace(/^CODENAME\s*=\s*.*$/m, `CODENAME = ${codename}`);
 
   return updated;
-}
-
-/**
- * Updates only the CODENAME variable in the Makefile content.
- * @param {string} makefileContent - The original Makefile content.
- * @param {string} codename - The codename to set.
- * @returns {string} The updated Makefile content.
- */
-function updateMakefileCodename(makefileContent, codename) {
-  return makefileContent.replace(
-    /^CODENAME\s*=\s*.*$/m,
-    `CODENAME = ${codename}`
-  );
 }
 
 /**
@@ -140,80 +133,63 @@ function runCommand(command) {
 }
 
 /**
- * Runs the "bump" sub-command: version only, no codename.
- * @param {string} bumpType - major, minor, or patch.
- * @returns {void}
- */
-function runBump(bumpType) {
-  if (!bumpType) {
-    console.error(USAGE);
-    process.exit(EXIT_CODE_ERROR);
-  }
-
-  const pkg = readPackageJson();
-  const currentVersion = pkg.version.split("-")[0];
-  const newVersion = calculateNewVersion(currentVersion, bumpType);
-
-  console.log(`Bumping version from ${currentVersion} to ${newVersion}`);
-
-  pkg.version = newVersion;
-  writePackageJson(pkg);
-
-  writeMakefile(updateMakefileVersionNumbers(readMakefile(), newVersion));
-
-  runCommand("npm install");
-  runCommand("git add .");
-  runCommand(`git commit -m "chore: release version ${newVersion}"`);
-  runCommand(`git tag -a v${newVersion} -m "Release v${newVersion}"`);
-  runCommand("git push origin HEAD");
-  runCommand("git push origin --tags");
-
-  console.log(`Successfully released version ${newVersion}`);
-}
-
-/**
- * Runs the "codename" sub-command: codename only, no version bump, no tag.
- * @param {string} codename - The new codename.
- * @returns {void}
- */
-function runCodename(codename) {
-  if (!codename) {
-    console.error(USAGE);
-    process.exit(EXIT_CODE_ERROR);
-  }
-
-  const pkg = readPackageJson();
-  console.log(`Updating codename from ${pkg.codename} to ${codename}`);
-
-  pkg.codename = codename;
-  writePackageJson(pkg);
-
-  writeMakefile(updateMakefileCodename(readMakefile(), codename));
-
-  runCommand("git add .");
-  runCommand(`git commit -m "chore: rename codename to ${codename}"`);
-  runCommand("git push origin HEAD");
-
-  console.log(`Successfully renamed codename to ${codename}`);
-}
-
-/**
  * Main execution flow for the bump version script.
  * @returns {void}
  */
 function main() {
   const args = process.argv;
-  const subcommand = args[ARG_POSITION_SUBCOMMAND];
-  const value = args[ARG_POSITION_VALUE];
+  const bumpType = args[ARG_POSITION_BUMP_TYPE];
+  const newCodename = args[ARG_POSITION_CODENAME];
+  const prereleaseTag = args[ARG_POSITION_PRERELEASE];
 
-  if (subcommand === "bump") {
-    runBump(value);
-  } else if (subcommand === "codename") {
-    runCodename(value);
-  } else {
-    console.error(USAGE);
+  if (!bumpType || !newCodename) {
+    console.error(
+      "Usage: node scripts/bump-version.js <major|minor|patch> <codename> [prerelease-tag]",
+    );
     process.exit(EXIT_CODE_ERROR);
   }
+
+  try {
+    console.log("Running build process to verify before version bump...");
+    execSync("npm run build", { stdio: "inherit" });
+  } catch {
+    console.error("Version update aborted: Build process failed with errors.");
+    process.exit(EXIT_CODE_ERROR);
+  }
+
+  const pkg = readPackageJson();
+  const currentVersion = pkg.version;
+  const newVersion = calculateNewVersion(
+    currentVersion,
+    bumpType,
+    prereleaseTag,
+  );
+
+  console.log(
+    `Bumping version from ${currentVersion} to ${newVersion} with codename ${newCodename}`,
+  );
+
+  pkg.version = newVersion;
+  pkg.codename = newCodename;
+  writePackageJson(pkg);
+
+  const makefileContent = readMakefile();
+  const updatedMakefile = updateMakefileVersion(
+    makefileContent,
+    newVersion,
+    newCodename,
+  );
+  writeMakefile(updatedMakefile);
+
+  runCommand("npm install");
+  runCommand("git add .");
+  const fullVersionString = `${newVersion}-${newCodename}`;
+  runCommand(`git commit -m "chore: release version ${fullVersionString}"`);
+  runCommand(`git tag -a v${newVersion} -m "Release v${newVersion}"`);
+  runCommand("git push origin main");
+  runCommand("git push origin --tags");
+
+  console.log(`Successfully released version ${fullVersionString}`);
 }
 
 main();
