@@ -5,7 +5,11 @@ import * as path from "path";
 import {
   clearCachedKey,
   decryptSessionKey,
+  DEFAULT_PBKDF2_ITERATIONS,
   encryptSessionKey,
+  LEGACY_PBKDF2_ITERATIONS,
+  validatePasswordStrength,
+  writeSessionFile,
   type SessionData,
 } from "./session";
 
@@ -39,6 +43,66 @@ describe("decryptSessionKey", () => {
     expect(() => decryptSessionKey(PASSWORD, session)).toThrow(
       /Invalid session password/,
     );
+  });
+
+  it("points the user at re-login when a session cannot be unlocked", () => {
+    expect(() => decryptSessionKey("wrong password", makeSession())).toThrow(
+      /cmu wallet login/,
+    );
+  });
+
+  it("stamps new sessions with the current PBKDF2 work factor", () => {
+    expect(encryptSessionKey(PASSWORD, PRIVATE_KEY).iterations).toBe(
+      DEFAULT_PBKDF2_ITERATIONS,
+    );
+    expect(DEFAULT_PBKDF2_ITERATIONS).toBeGreaterThan(LEGACY_PBKDF2_ITERATIONS);
+  });
+
+  it("still decrypts a legacy session that predates the iterations field", () => {
+    const legacy: SessionData = {
+      address: "0xTest",
+      activeNetwork: "local",
+      ...encryptSessionKey(PASSWORD, PRIVATE_KEY, LEGACY_PBKDF2_ITERATIONS),
+    };
+    delete legacy.iterations; // old files never wrote this key
+    expect(decryptSessionKey(PASSWORD, legacy)).toBe(PRIVATE_KEY);
+  });
+});
+
+describe("validatePasswordStrength", () => {
+  it("rejects passwords below the minimum length", () => {
+    expect(validatePasswordStrength("aB3xy")).toMatch(/at least/);
+  });
+
+  it("rejects a single character class even when long enough", () => {
+    expect(validatePasswordStrength("aaaaaaaaaaaaaa")).toMatch(/mix at least/);
+  });
+
+  it("rejects well-known weak passwords", () => {
+    expect(validatePasswordStrength("password1234")).toMatch(/too common/);
+  });
+
+  it("accepts a sufficiently strong password", () => {
+    expect(validatePasswordStrength("correct horse 9")).toBe(true);
+  });
+});
+
+describe("writeSessionFile", () => {
+  it("writes the session file with owner-only permissions", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cmu-perm-"));
+    const file = path.join(dir, ".cmu-session");
+    try {
+      // Pre-create it world-readable to prove chmod tightens an existing file.
+      fs.writeFileSync(file, "{}", { mode: 0o644 });
+      await writeSessionFile(file, {
+        address: "0xTest",
+        activeNetwork: "local",
+        ...encryptSessionKey(PASSWORD, PRIVATE_KEY),
+      });
+      expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

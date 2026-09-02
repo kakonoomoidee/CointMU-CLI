@@ -4,9 +4,40 @@ const ALGORITHM = "aes-256-gcm";
 const SESSION_FILE_NAME = ".cmu-session";
 const SALT_BYTES = 16;
 const IV_BYTES = 12; // 96-bit IV is the standard nonce size for AES-GCM
-const PBKDF2_ITERATIONS = 100000;
 const KEY_LENGTH = 32;
 const DIGEST = "sha256";
+const JSON_SPACES = 2;
+
+/** Owner read/write only. The session file holds an encrypted private key. */
+const SESSION_FILE_MODE = 0o600;
+
+/**
+ * PBKDF2-HMAC-SHA256 work factor for new sessions. 600k is the OWASP 2023
+ * floor for this digest. The value used is persisted in the session file
+ * (`iterations`), so it can be raised again later without breaking sessions
+ * written with a smaller factor.
+ */
+export const DEFAULT_PBKDF2_ITERATIONS = 600000;
+
+/**
+ * Work factor for sessions written before the `iterations` field existed.
+ * Those files must keep decrypting; they simply used this fixed value.
+ */
+export const LEGACY_PBKDF2_ITERATIONS = 100000;
+
+/** Minimum length for a new session password. */
+export const MIN_PASSWORD_LENGTH = 12;
+
+const COMMON_WEAK_PASSWORDS = new Set([
+  "password",
+  "passw0rd",
+  "password1234",
+  "letmein12345",
+  "123456789012",
+  "qwertyuiop12",
+  "administrator",
+  "changeme1234",
+]);
 
 export interface SessionData {
   address: string;
@@ -15,6 +46,8 @@ export interface SessionData {
   salt?: string;
   iv?: string;
   authTag?: string;
+  /** PBKDF2 iterations used for this session. Absent = legacy (100k). */
+  iterations?: number;
 }
 
 export interface EncryptedKey {
@@ -22,6 +55,46 @@ export interface EncryptedKey {
   salt: string;
   iv: string;
   authTag: string;
+  iterations: number;
+}
+
+/**
+ * Proportional strength check for a local CLI session password. Not a
+ * passphrase-manager replacement: it only rejects the obviously weak
+ * choices (too short, single character class, known common passwords).
+ * Returns `true` when acceptable, or a message string for inquirer.
+ */
+export function validatePasswordStrength(password: string): true | string {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`;
+  }
+  if (COMMON_WEAK_PASSWORDS.has(password.toLowerCase())) {
+    return "That password is too common. Choose something less predictable.";
+  }
+  const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((re) =>
+    re.test(password),
+  ).length;
+  if (classes < 2) {
+    return "Password must mix at least two of: lowercase, uppercase, digits, symbols.";
+  }
+  return true;
+}
+
+/**
+ * Persists session data with owner-only permissions (0600). chmod is applied
+ * unconditionally so a file that already existed with looser permissions is
+ * tightened on rewrite, not just on first creation.
+ */
+export async function writeSessionFile(
+  filePath: string,
+  data: SessionData,
+): Promise<void> {
+  const fs = (await import("fs-extra")).default || (await import("fs-extra"));
+  await fs.writeJson(filePath, data, {
+    spaces: JSON_SPACES,
+    mode: SESSION_FILE_MODE,
+  });
+  await fs.chmod(filePath, SESSION_FILE_MODE);
 }
 
 /** In-memory cache of the decrypted key for the lifetime of one CLI process. */
@@ -32,15 +105,9 @@ export function clearCachedKey(): void {
   cachedKey = undefined;
 }
 
-/** Derives the AES key from a password + salt using the shared PBKDF2 params. */
-function deriveKey(password: string, salt: Buffer): Buffer {
-  return crypto.pbkdf2Sync(
-    password,
-    salt,
-    PBKDF2_ITERATIONS,
-    KEY_LENGTH,
-    DIGEST,
-  );
+/** Derives the AES key from a password + salt using PBKDF2-HMAC-SHA256. */
+function deriveKey(password: string, salt: Buffer, iterations: number): Buffer {
+  return crypto.pbkdf2Sync(password, salt, iterations, KEY_LENGTH, DIGEST);
 }
 
 /**
@@ -51,10 +118,11 @@ function deriveKey(password: string, salt: Buffer): Buffer {
 export function encryptSessionKey(
   password: string,
   privateKey: string,
+  iterations: number = DEFAULT_PBKDF2_ITERATIONS,
 ): EncryptedKey {
   const salt = crypto.randomBytes(SALT_BYTES);
   const iv = crypto.randomBytes(IV_BYTES);
-  const key = deriveKey(password, salt);
+  const key = deriveKey(password, salt, iterations);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
   let encryptedKey = cipher.update(privateKey, "utf8", "hex");
@@ -65,6 +133,7 @@ export function encryptSessionKey(
     salt: salt.toString("hex"),
     iv: iv.toString("hex"),
     authTag: cipher.getAuthTag().toString("hex"),
+    iterations,
   };
 }
 
@@ -94,7 +163,12 @@ export function decryptSessionKey(
   }
 
   try {
-    const key = deriveKey(password, Buffer.from(session.salt, "hex"));
+    const iterations = session.iterations ?? LEGACY_PBKDF2_ITERATIONS;
+    const key = deriveKey(
+      password,
+      Buffer.from(session.salt, "hex"),
+      iterations,
+    );
     const decipher = crypto.createDecipheriv(
       ALGORITHM,
       key,
@@ -107,7 +181,8 @@ export function decryptSessionKey(
     return decrypted;
   } catch {
     throw new Error(
-      "Invalid session password, or the .cmu-session file has been tampered with.",
+      "Invalid session password, or the .cmu-session file is from an older " +
+        "version or has been tampered with. Run 'cmu wallet login' again to recreate it.",
     );
   }
 }
