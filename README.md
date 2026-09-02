@@ -88,23 +88,40 @@ When you run `cmu --help` in your terminal, you will see the following output:
 Usage: cmu [options] [command]
 
 Primary development toolkit for the CointMU blockchain
+Tip: Run cmu <command> -h to see detailed options for a specific command.
 
 Options:
-  -V, --version                 output the version number
-  -h, --help                    display help for command
+  -h, --help                  display help for command
 
 Commands:
-  create [options] <project>    Scaffolds a new CointMU project (interactive language and template selection)
-  compile                       Reads Solidity files from the contracts folder and compiles them using solc
-  deploy                        Sequentially executes all deployment scripts in the deploy/ directory
-  wallet                        Wallet management commands
-    create                      Generates a new crypto wallet and outputs the public/private keys
-  explorer                      Explorer commands
-    open                        Opens the local CointMU block explorer UI
-  node                          Node management commands
-    connect                     Pings the RPC endpoint defined in the config to test network connection
-  audit                         Runs security checks and audits on the compiled smart contracts
-  help [command]                display help for command
+  compile [options]           Compiles smart contracts into ABI and bytecode artifacts
+  deploy [options]            Executes deployment scripts to broadcast contracts on-chain
+  wallet                      Wallet management commands
+    create                    Generates a new, secure EVM-compatible wallet
+    login                     Securely log into your wallet and create an encrypted session
+    balance                   Fetch and display the native token balance of the logged-in wallet
+    info                      Display the current active wallet session information
+  create [options] [project]  Initializes a new CointMU workspace with pre-configured templates
+  explorer                    Interacts with the block explorer for on-chain data retrieval
+    open                      Opens the local CointMU block explorer UI
+  node [options]              Manages the local EVM node for development and testing
+    connect                   Pings the configured RPC endpoint to test connectivity
+    start                     Starts a local development network with pre-funded accounts
+  audit [options]             Performs static security analysis on contracts and dependencies
+  version [options]           Displays detailed CLI, runtime, and dependency versions
+  test [options]              Executes the automated smart contract test suite
+  mine                        Mining control commands
+    start                     Starts mining blocks on the active network using the logged-in wallet
+    stop                      Stops mining blocks on the active network
+  network [options]           Manage active RPC networks locally
+    --save <url>              Save a new network or update an existing one (with -n <name>)
+    --use <name>              Switch the active network to the specified name
+    --list                    List all saved networks
+    --delete <name>           Delete a saved network
+    info                      Display the active network configuration
+    ping [name]               Ping a network to check connectivity and latency
+  update [options]            Updates the CointMU CLI to the latest version directly from GitHub
+  help [command]              display help for command
 ```
 
 ## ⚡ Quick Start
