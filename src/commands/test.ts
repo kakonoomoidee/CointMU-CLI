@@ -7,15 +7,68 @@ const ACCOUNT_COUNT = 10;
 const ACCOUNT_BALANCE = "100000000000000000000";
 const TEST_DIR_NAME = "test";
 
+const RPC_ALLOWED_HOSTS = new Set([
+  `127.0.0.1:${TEST_PORT}`,
+  `localhost:${TEST_PORT}`,
+  `[::1]:${TEST_PORT}`,
+]);
+
+/**
+ * Guards the local test RPC proxy against browser-originated access
+ * (DNS rebinding against a localhost JSON-RPC server, issue #83).
+ *
+ * Node JSON-RPC clients (ethers JsonRpcProvider, the spawned mocha process)
+ * send no `Origin` header and always address the loopback `Host`. A browser
+ * always sends `Origin` on a cross-origin fetch, and a DNS-rebound request
+ * carries an attacker-controlled `Host`. Either one is rejected unless the
+ * user explicitly opts in with `--allow-cors`.
+ *
+ * @param {object} headers - Incoming request headers (`req.headers`).
+ * @param {boolean} [allowCors] - True when `--allow-cors` was passed.
+ * @returns {boolean} True when the request may be proxied to the provider.
+ */
+export function isRpcRequestAllowed(
+  headers: {
+    origin?: string | string[];
+    host?: string | string[];
+  },
+  allowCors = false,
+): boolean {
+  if (allowCors) return true;
+
+  const origin = Array.isArray(headers.origin)
+    ? headers.origin[0]
+    : headers.origin;
+  if (origin != null && origin !== "") return false;
+
+  const host = Array.isArray(headers.host) ? headers.host[0] : headers.host;
+  if (
+    host != null &&
+    host !== "" &&
+    !RPC_ALLOWED_HOSTS.has(host.toLowerCase())
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Executes the automated smart contract test suite.
  * @param {object} options - CLI options.
  * @returns {Promise<void>} Resolves when tests complete.
  */
 async function runTest(
-  options: { gas?: boolean; verbose?: boolean } = {},
+  options: { gas?: boolean; verbose?: boolean; allowCors?: boolean } = {},
 ): Promise<void> {
   const isVerbose = options.verbose;
+  const allowCors = Boolean(options.allowCors);
+  if (allowCors) {
+    console.warn(
+      "\x1b[33m[!] --allow-cors: the test RPC proxy on 127.0.0.1:" +
+        `${TEST_PORT} now accepts requests from any browser origin.\x1b[0m`,
+    );
+  }
   try {
     const fs = (await import("fs-extra")).default || (await import("fs-extra"));
     const path = await import("path");
@@ -97,8 +150,25 @@ async function runTest(
         body += chunk.toString();
       });
       req.on("end", async () => {
+        if (!isRpcRequestAllowed(req.headers, allowCors)) {
+          res.statusCode = 403;
+          res.setHeader("Content-Type", "application/json");
+          return res.end(
+            `{"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"Forbidden: cross-origin or non-local request rejected. Pass --allow-cors to cmu test for browser access."}}`,
+          );
+        }
+        if (req.method === "OPTIONS") {
+          if (allowCors) {
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            res.setHeader("Access-Control-Allow-Headers", "*");
+            res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+            res.statusCode = 204;
+          } else {
+            res.statusCode = 403;
+          }
+          return res.end();
+        }
         if (!body) {
-          if (req.method === "OPTIONS") return;
           res.statusCode = 400;
           return res.end();
         }
@@ -125,7 +195,7 @@ async function runTest(
           }
 
           res.setHeader("Content-Type", "application/json");
-          res.setHeader("Access-Control-Allow-Origin", "*");
+          if (allowCors) res.setHeader("Access-Control-Allow-Origin", "*");
           res.end(JSON.stringify(isArray ? responses : responses[0]));
         } catch {
           res.statusCode = 400;
@@ -134,16 +204,6 @@ async function runTest(
           );
         }
       });
-    });
-
-    server.on("request", (req: any, res: any) => {
-      if (req.method === "OPTIONS") {
-        res.setHeader("Access-Control-Allow-Origin", "*");
-        res.setHeader("Access-Control-Allow-Headers", "*");
-        res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-        res.statusCode = 204;
-        res.end();
-      }
     });
 
     const { killPort } = await import("../utils/process");
@@ -277,4 +337,8 @@ export const testCommand = new Command("test")
     "Enable gas profiler to report gas used by transactions during tests",
   )
   .option("-v, --verbose", "Enable verbose logging for debugging")
+  .option(
+    "--allow-cors",
+    "Allow browser (cross-origin) access to the local test RPC proxy; off by default to prevent DNS-rebinding attacks",
+  )
   .action(runTest);
